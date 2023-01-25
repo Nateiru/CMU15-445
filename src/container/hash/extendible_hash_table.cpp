@@ -24,11 +24,7 @@ namespace bustub {
 template <typename K, typename V>
 ExtendibleHashTable<K, V>::ExtendibleHashTable(size_t bucket_size)
     : global_depth_(0), bucket_size_(bucket_size), num_buckets_(1),
-      dir_(1, std::make_shared<Bucket>(bucket_size)) {
-      //   std::cout << "Finish init()\n";
-      //   std::cout << "dir_size: " << dir_.size() << '\n';
-      //   std::cout << "buc_size: " << dir_[0]->GetItems().size() << '\n';
-      }
+      dir_(1, std::make_shared<Bucket>(bucket_size)) {}
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::IndexOf(const K &key) -> size_t {
@@ -38,7 +34,7 @@ auto ExtendibleHashTable<K, V>::IndexOf(const K &key) -> size_t {
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::GetGlobalDepth() const -> int {
-  std::scoped_lock<std::mutex> lock(latch_);
+  // std::scoped_lock<std::mutex> lock(latch_);
   return GetGlobalDepthInternal();
 }
 
@@ -49,7 +45,7 @@ auto ExtendibleHashTable<K, V>::GetGlobalDepthInternal() const -> int {
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::GetLocalDepth(int dir_index) const -> int {
-  std::scoped_lock<std::mutex> lock(latch_);
+  // std::scoped_lock<std::mutex> lock(latch_);
   return GetLocalDepthInternal(dir_index);
 }
 
@@ -60,7 +56,7 @@ auto ExtendibleHashTable<K, V>::GetLocalDepthInternal(int dir_index) const -> in
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::GetNumBuckets() const -> int {
-  std::scoped_lock<std::mutex> lock(latch_);
+  // std::scoped_lock<std::mutex> lock(latch_);
   return GetNumBucketsInternal();
 }
 
@@ -71,18 +67,21 @@ auto ExtendibleHashTable<K, V>::GetNumBucketsInternal() const -> int {
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Find(const K &key, V &value) -> bool {
+  // std::lock_guard<std::mutex> guard(latch_);
   auto target_bucket = dir_[IndexOf(key)];
   return target_bucket->Find(key, value);
 }
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Remove(const K &key) -> bool {
+  // std::lock_guard<std::mutex> guard(latch_);
   auto target_bucket = dir_[IndexOf(key)];
   return target_bucket->Remove(key);
 }
 
 template <typename K, typename V>
 void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
+  std::lock_guard<std::mutex> guard(latch_);
   // 桶满 需要扩容
   while(dir_[IndexOf(key)]->IsFull()) {
     assert(dir_[IndexOf(key)]->IsFull());
