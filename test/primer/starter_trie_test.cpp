@@ -19,6 +19,10 @@
 #include "common/exception.h"
 #include "gtest/gtest.h"
 #include "primer/p0_trie.h"
+#define LINE                                            \
+  do {                                                  \
+    std::cout << "++++++++++++++++++++++" << std::endl; \
+  } while (0)
 
 namespace bustub {
 
@@ -41,7 +45,7 @@ std::vector<std::string> GenerateNRandomString(int n) {
   return rand_strs;
 }
 
-TEST(StarterTest, DISABLED_TrieNodeInsertTest) {
+TEST(starter_trie_test, TrieNodeInsertTest) {
   // Test Insert
   //  When same key is inserted twice, insert should return nullptr
   // When inserted key and unique_ptr's key does not match, return nullptr
@@ -60,7 +64,7 @@ TEST(StarterTest, DISABLED_TrieNodeInsertTest) {
   EXPECT_EQ((*child_node)->GetKeyChar(), 'c');
 }
 
-TEST(StarterTest, DISABLED_TrieNodeRemoveTest) {
+TEST(StarterTest, TrieNodeRemoveTest) {
   auto t = TrieNode('a');
   __attribute__((unused)) auto child_node = t.InsertChildNode('b', std::make_unique<TrieNode>('b'));
   child_node = t.InsertChildNode('c', std::make_unique<TrieNode>('c'));
@@ -78,7 +82,7 @@ TEST(StarterTest, DISABLED_TrieNodeRemoveTest) {
   EXPECT_EQ(child_node, nullptr);
 }
 
-TEST(StarterTest, DISABLED_TrieInsertTest) {
+TEST(StarterTest, TrieInsertTest) {
   {
     Trie trie;
     trie.Insert<std::string>("abc", "d");
@@ -87,7 +91,7 @@ TEST(StarterTest, DISABLED_TrieInsertTest) {
     EXPECT_EQ(success, true);
     EXPECT_EQ(val, "d");
   }
-
+  // std::cout << "+++++++++++++++++++++++++++\n";
   // Insert empty string key should return false
   {
     Trie trie;
@@ -129,7 +133,7 @@ TEST(StarterTest, DISABLED_TrieInsertTest) {
   }
 }
 
-TEST(StarterTrieTest, DISABLED_RemoveTest) {
+TEST(StarterTrieTest, RemoveTest) {
   {
     Trie trie;
     bool success = trie.Insert<int>("a", 5);
@@ -149,10 +153,11 @@ TEST(StarterTrieTest, DISABLED_RemoveTest) {
     EXPECT_EQ(trie.GetValue<int>("aaa", &success), 8);
     EXPECT_EQ(success, true);
 
+    EXPECT_EQ(trie.GetValue<int>("aaa", &success), 8);
+    EXPECT_EQ(success, true);
     // Remove non-existant keys should return false
     success = trie.Remove("aaaa");
     EXPECT_EQ(success, false);
-
     success = trie.Remove("aa");
     EXPECT_EQ(success, true);
     success = trie.Remove("a");
@@ -162,7 +167,7 @@ TEST(StarterTrieTest, DISABLED_RemoveTest) {
   }
 }
 
-TEST(StarterTrieTest, DISABLED_ConcurrentTest1) {
+TEST(StarterTrieTest, ConcurrentTest1) {
   Trie trie;
   constexpr int num_words = 1000;
   constexpr int num_bits = 10;
