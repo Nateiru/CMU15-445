@@ -131,14 +131,32 @@ class LRUKReplacer {
    * @return size_t
    */
   auto Size() -> size_t;
+  class FrameMeta {
+   public:
+    FrameMeta() = default;
+    explicit FrameMeta(size_t access_time) : last_access_(access_time), access_cnt_(1), evictable_(false) {}
+    void SetEvictable(bool set_evictable) { evictable_ = set_evictable; }
+    auto IsEvictable() -> bool { return evictable_; }
+    auto Count() -> size_t { return access_cnt_; }
+    auto Time() -> size_t { return last_access_; }
+    void Access(size_t timestamp) {
+      access_cnt_++;
+      last_access_ = timestamp;
+    }
+
+   private:
+    size_t last_access_, access_cnt_;
+    bool evictable_;
+  };
 
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
-  [[maybe_unused]] size_t current_timestamp_{0};
-  [[maybe_unused]] size_t curr_size_{0};
-  [[maybe_unused]] size_t replacer_size_;
-  [[maybe_unused]] size_t k_;
+  [[]] size_t current_timestamp_{0};
+  [[]] size_t curr_size_{0};
+  [[]] size_t replacer_size_;
+  [[]] size_t k_;
+  std::unordered_map<frame_id_t, FrameMeta> frame_list_;
   std::mutex latch_;
 };
 

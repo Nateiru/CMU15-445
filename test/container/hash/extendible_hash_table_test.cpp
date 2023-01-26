@@ -12,7 +12,6 @@
     std::cout << "++++++++++++++++++++++" << std::endl; \
   } while (0)
 
-
 namespace bustub {
 
 TEST(ExtendibleHashTableTest, SampleTest) {

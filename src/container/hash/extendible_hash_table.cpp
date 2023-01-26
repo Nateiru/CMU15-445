@@ -23,8 +23,7 @@ namespace bustub {
 
 template <typename K, typename V>
 ExtendibleHashTable<K, V>::ExtendibleHashTable(size_t bucket_size)
-    : global_depth_(0), bucket_size_(bucket_size), num_buckets_(1),
-      dir_(1, std::make_shared<Bucket>(bucket_size)) {}
+    : global_depth_(0), bucket_size_(bucket_size), num_buckets_(1), dir_(1, std::make_shared<Bucket>(bucket_size)) {}
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::IndexOf(const K &key) -> size_t {
@@ -67,14 +66,14 @@ auto ExtendibleHashTable<K, V>::GetNumBucketsInternal() const -> int {
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Find(const K &key, V &value) -> bool {
-  // std::lock_guard<std::mutex> guard(latch_);
+  std::lock_guard<std::mutex> guard(latch_);
   auto target_bucket = dir_[IndexOf(key)];
   return target_bucket->Find(key, value);
 }
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Remove(const K &key) -> bool {
-  // std::lock_guard<std::mutex> guard(latch_);
+  std::lock_guard<std::mutex> guard(latch_);
   auto target_bucket = dir_[IndexOf(key)];
   return target_bucket->Remove(key);
 }
@@ -83,7 +82,7 @@ template <typename K, typename V>
 void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
   std::lock_guard<std::mutex> guard(latch_);
   // 桶满 需要扩容
-  while(dir_[IndexOf(key)]->IsFull()) {
+  while (dir_[IndexOf(key)]->IsFull()) {
     assert(dir_[IndexOf(key)]->IsFull());
 
     auto full_bucket = dir_[IndexOf(key)];
@@ -107,15 +106,15 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
       } else {
         zero_bucket->Insert(item.first, item.second);
       }
-    } 
-    // // 分裂完成 
+    }
+    // 分裂完成
     num_buckets_++;
 
     for (size_t i = 0; i < dir_.size(); i++) {
       if (dir_[i] == full_bucket) {
         if ((i & mask) != 0U) {
           dir_[i] = one_bucket;
-        }else {
+        } else {
           dir_[i] = zero_bucket;
         }
       }
@@ -141,7 +140,7 @@ auto ExtendibleHashTable<K, V>::Bucket::Find(const K &key, V &value) -> bool {
       value = item.second;
       return true;
     }
-  } 
+  }
   return false;
 }
 
