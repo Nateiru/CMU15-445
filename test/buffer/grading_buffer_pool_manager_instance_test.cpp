@@ -319,7 +319,7 @@ TEST(BufferPoolManagerInstanceTest, FetchPage) {  // NOLINT
   ASSERT_EQ(1, bpm->UnpinPage(page_ids[5], false));
   ASSERT_EQ(1, bpm->UnpinPage(page_ids[6], false));
   ASSERT_EQ(1, bpm->UnpinPage(page_ids[7], false));
-  
+
   // page5 would be evicted.
   new_page = bpm->NewPage(&temp_page_id);
   ASSERT_NE(nullptr, new_page);
@@ -332,7 +332,7 @@ TEST(BufferPoolManagerInstanceTest, FetchPage) {  // NOLINT
   ASSERT_EQ(0, std::strcmp("updatedpage7", (page7->GetData())));
   // All pages pinned
   ASSERT_EQ(nullptr, bpm->FetchPage(page_ids[6]));
-  
+
   bpm->UnpinPage(temp_page_id, false);
   page6 = bpm->FetchPage(page_ids[6]);
   ASSERT_NE(nullptr, page6);

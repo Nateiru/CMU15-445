@@ -160,40 +160,6 @@ void BufferPoolManagerInstance::FlushAllPgsImp() {
   }
 }
 
-void BufferPoolManagerInstance::debug() {
-  std::cout << "page_id: ";
-  for (frame_id_t frame_id = 0; frame_id < static_cast<frame_id_t>(pool_size_); ++frame_id) {
-    page_id_t page_id = pages_[frame_id].page_id_;
-    if (page_id == INVALID_PAGE_ID) {
-      continue;
-    }
-    std::cout << page_id << ' ';
-  }
-  std::cout << '\n';
-  std::cout << "pin_count: ";
-  for (frame_id_t frame_id = 0; frame_id < static_cast<frame_id_t>(pool_size_); ++frame_id) {
-    page_id_t page_id = pages_[frame_id].page_id_;
-    if (page_id == INVALID_PAGE_ID) {
-      continue;
-    }
-    std::cout << pages_[frame_id].GetPinCount() << ' ';
-  }
-  std::cout << "\n\n\n";
-
-}
-/**
- * TODO(P1): Add implementation
- *
- * @brief Delete a page from the buffer pool. If page_id is not in the buffer pool, do nothing and return true. If the
- * page is pinned and cannot be deleted, return false immediately.
- *
- * After deleting the page from the page table, stop tracking the frame in the replacer and add the frame
- * back to the free list. Also, reset the page's memory and metadata. Finally, you should call DeallocatePage() to
- * imitate freeing the page on the disk.
- *
- * @param page_id id of page to be deleted
- * @return false if the page exists but could not be deleted, true if the page didn't exist or deletion succeeded
- */
 auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
   std::lock_guard<std::mutex> guard(latch_);
   frame_id_t frame_id;
