@@ -139,10 +139,8 @@ class LRUKReplacer {
     auto IsEvictable() -> bool { return evictable_; }
     auto Count() -> size_t { return access_cnt_; }
     auto Time() -> size_t { return last_access_; }
-    void Access(size_t timestamp) {
-      access_cnt_++;
-      last_access_ = timestamp;
-    }
+    void Access() { access_cnt_++; }
+    void SetTime(size_t timestamp) { last_access_ = timestamp; }
 
    private:
     size_t last_access_, access_cnt_;

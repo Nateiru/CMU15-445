@@ -60,7 +60,10 @@ void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
   }
   ++current_timestamp_;
   if (frame_list_.count(frame_id) != 0U) {
-    frame_list_[frame_id].Access(current_timestamp_);
+    frame_list_[frame_id].Access();
+    if (frame_list_[frame_id].Count() >= k_) {
+      frame_list_[frame_id].SetTime(current_timestamp_);
+    }
   } else {
     frame_list_.emplace(frame_id, FrameMeta(current_timestamp_));
   }
