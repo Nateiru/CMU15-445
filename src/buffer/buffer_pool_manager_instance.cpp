@@ -43,6 +43,7 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
 }
 
 auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
+  std::lock_guard<std::mutex> guard(latch_);
   frame_id_t frame_id;
   if (!free_list_.empty()) {
     frame_id = free_list_.back();
@@ -73,15 +74,20 @@ auto BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) -> Page * {
   disk_manager_->WritePage(pages_[frame_id].GetPageId(), pages_[frame_id].GetData());
   replacer_->RecordAccess(frame_id);
   replacer_->SetEvictable(frame_id, false);
+  // debug();
   return &pages_[frame_id];
 }
 
-auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * { 
+auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
+  std::lock_guard<std::mutex> guard(latch_);
   frame_id_t frame_id;
   bool is_exist = page_table_->Find(page_id, frame_id);
   if (is_exist) {
     pages_[frame_id].pin_count_++;
     replacer_->RecordAccess(frame_id);
+    if (pages_[frame_id].GetPinCount() == 1) {
+      replacer_->SetEvictable(frame_id, false);
+    }
     return &pages_[frame_id];
   }
   // buffer pool 中无 page_id 需要将 page 加载入缓存 先得到一个 frame_id
@@ -89,13 +95,13 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
     frame_id = free_list_.back();
     free_list_.pop_back();
   } else {
-  // LRU-K 淘汰
+    // LRU-K 淘汰
     bool success = replacer_->Evict(&frame_id);
     if (!success) {
       return nullptr;
     }
-  // 淘汰成功 分配一个 frame_id
-  // 该页是脏的  需要重新写回 disk
+    // 淘汰成功 分配一个 frame_id
+    // 该页是脏的  需要重新写回 disk
     if (pages_[frame_id].IsDirty()) {
       pages_[frame_id].is_dirty_ = false;
       disk_manager_->WritePage(pages_[frame_id].GetPageId(), pages_[frame_id].GetData());
@@ -111,10 +117,11 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
   pages_[frame_id].pin_count_ = 1;
   replacer_->RecordAccess(frame_id);
   replacer_->SetEvictable(frame_id, false);
-  return &pages_[frame_id];  
+  return &pages_[frame_id];
 }
 
-auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> bool { 
+auto BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) -> bool {
+  std::lock_guard<std::mutex> guard(latch_);
   frame_id_t frame_id;
   bool is_exist = page_table_->Find(page_id, frame_id);
   if (!is_exist) {
@@ -142,28 +149,53 @@ auto BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) -> bool {
   return true;
 }
 void BufferPoolManagerInstance::FlushAllPgsImp() {
-
+  std::lock_guard<std::mutex> guard(latch_);
   for (frame_id_t frame_id = 0; frame_id < static_cast<frame_id_t>(pool_size_); ++frame_id) {
     page_id_t page_id = pages_[frame_id].page_id_;
-    if (page_id == INVALID_PAGE_ID) continue;
+    if (page_id == INVALID_PAGE_ID) {
+      continue;
+    }
     pages_[frame_id].is_dirty_ = false;
     disk_manager_->WritePage(page_id, pages_[frame_id].GetData());
   }
 }
+
+void BufferPoolManagerInstance::debug() {
+  std::cout << "page_id: ";
+  for (frame_id_t frame_id = 0; frame_id < static_cast<frame_id_t>(pool_size_); ++frame_id) {
+    page_id_t page_id = pages_[frame_id].page_id_;
+    if (page_id == INVALID_PAGE_ID) {
+      continue;
+    }
+    std::cout << page_id << ' ';
+  }
+  std::cout << '\n';
+  std::cout << "pin_count: ";
+  for (frame_id_t frame_id = 0; frame_id < static_cast<frame_id_t>(pool_size_); ++frame_id) {
+    page_id_t page_id = pages_[frame_id].page_id_;
+    if (page_id == INVALID_PAGE_ID) {
+      continue;
+    }
+    std::cout << pages_[frame_id].GetPinCount() << ' ';
+  }
+  std::cout << "\n\n\n";
+
+}
 /**
-   * TODO(P1): Add implementation
-   *
-   * @brief Delete a page from the buffer pool. If page_id is not in the buffer pool, do nothing and return true. If the
-   * page is pinned and cannot be deleted, return false immediately.
-   *
-   * After deleting the page from the page table, stop tracking the frame in the replacer and add the frame
-   * back to the free list. Also, reset the page's memory and metadata. Finally, you should call DeallocatePage() to
-   * imitate freeing the page on the disk.
-   *
-   * @param page_id id of page to be deleted
-   * @return false if the page exists but could not be deleted, true if the page didn't exist or deletion succeeded
-   */
-auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool { 
+ * TODO(P1): Add implementation
+ *
+ * @brief Delete a page from the buffer pool. If page_id is not in the buffer pool, do nothing and return true. If the
+ * page is pinned and cannot be deleted, return false immediately.
+ *
+ * After deleting the page from the page table, stop tracking the frame in the replacer and add the frame
+ * back to the free list. Also, reset the page's memory and metadata. Finally, you should call DeallocatePage() to
+ * imitate freeing the page on the disk.
+ *
+ * @param page_id id of page to be deleted
+ * @return false if the page exists but could not be deleted, true if the page didn't exist or deletion succeeded
+ */
+auto BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) -> bool {
+  std::lock_guard<std::mutex> guard(latch_);
   frame_id_t frame_id;
   bool is_exist = page_table_->Find(page_id, frame_id);
   if (!is_exist) {
