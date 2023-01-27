@@ -41,9 +41,22 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   auto KeyAt(int index) const -> KeyType;
   void SetKeyAt(int index, const KeyType &key);
   auto ValueAt(int index) const -> ValueType;
+  void SetValueAt(int index, const ValueType &value);
+
+  auto ValueIndex(const ValueType &value) const -> int;
+  auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> ValueType;
+
+  void MoveHalfTo(BPlusTreeInternalPage *recipient, BufferPoolManager *buffer_pool_manager);
+
+  void PopulateNewRoot(const ValueType &old_value, const KeyType &new_key, const ValueType &new_value);
+
+  auto InsertNodeAfter(const ValueType &old_value, const KeyType &new_key, const ValueType &new_value) -> int;
+
+  void Debug() {}
 
  private:
   // Flexible array member for page data.
+  // #define MappingType std::pair<KeyType, ValueType>
   MappingType array_[1];
 };
 }  // namespace bustub

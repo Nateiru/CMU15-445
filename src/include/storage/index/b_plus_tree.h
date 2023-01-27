@@ -75,6 +75,20 @@ class BPlusTree {
   void RemoveFromFile(const std::string &file_name, Transaction *transaction = nullptr);
 
  private:
+  // ++++++++++ 框架代码【没有】的函数
+  auto StartNewTree(const KeyType &key, const ValueType &value) -> void;
+
+  auto InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
+
+  auto FindLeafPage(const KeyType &key, bool left_most = false) -> LeafPage *;
+
+  void InsertIntoParent(BPlusTreePage *old_node, const KeyType &key, BPlusTreePage *new_node,
+                        Transaction *transaction = nullptr);
+
+  template <typename N>
+  auto Split(N *node) -> N *;
+
+  // ++++++++++ 框架代码【没有】的函数
   void UpdateRootPageId(int insert_record = 0);
 
   /* Debug Routines for FREE!! */
