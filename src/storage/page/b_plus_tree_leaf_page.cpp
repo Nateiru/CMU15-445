@@ -10,6 +10,7 @@
 //===----------------------------------------------------------------------===//
 
 #include <sstream>
+#include "storage/page/b_plus_tree_internal_page.h"
 
 #include "common/exception.h"
 #include "common/rid.h"
@@ -57,6 +58,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 
 /**
  * Helper method to find the first index i so that array_[i].first >= key
+ * if key > ALL(array_) return GetSize()
  * NOTE: This method is only used when generating index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
@@ -74,7 +76,15 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyIndex(const KeyType &key, const KeyComparato
   }
   return ed + 1;
 }
-
+/*
+ * Helper method to find and return the value associated with input "index"(a.k.a
+ * array offset)
+ */
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType {
+  assert(index >= 0);
+  return array_[index].second;
+}
 /*****************************************************************************
  * INSERTION
  *****************************************************************************/
@@ -135,9 +145,99 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveHalfTo(BPlusTreeLeafPage *recipient,
   SetSize(copy_start_index);
   recipient->SetSize(total - copy_start_index);
 }
+/*****************************************************************************
+ * REMOVE
+ *****************************************************************************/
+/*
+ * First look through leaf page to see whether delete key exist or not. If
+ * exist, perform deletion, otherwise return immdiately.
+ * NOTE: store key&value pair continuously after deletion
+ * @return   page size after deletion
+ */
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveAndDeleteRecord(const KeyType &key, const KeyComparator &comparator) -> int{
+  // 第一个 >= key 的索引
+  auto first_LGE_idx = KeyIndex(key, comparator);
+  if (first_LGE_idx >= GetSize() || comparator(KeyAt(first_LGE_idx), key) != 0) {
+    return GetSize();
+  }
+  // 存在 key
+  for (int i = first_LGE_idx; i < GetSize() - 1; ++i) {
+    array_[i] = array_[i + 1];
+  }
+  IncreaseSize(-1);
+  return GetSize();
+}
+/*****************************************************************************
+ * MERGE
+ *****************************************************************************/
+/*
+ * Remove all of key & value pairs from this page to "recipient" page, then
+ * update next page id
+ */
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveAllTo(BPlusTreeLeafPage *recipient, int, BufferPoolManager *) {
+  assert(recipient != nullptr);
+  int start_index = recipient->GetSize();
+  for (int i = 0; i < GetSize(); i++) {
+    recipient->array_[i + start_index] = array_[i];
+  }
+  // set pointer
+  recipient->SetNextPageId(GetNextPageId());
+  // add size
+  recipient->IncreaseSize(GetSize());
+  SetSize(0);
+}
+/*****************************************************************************
+ * REDISTRIBUTE
+ *****************************************************************************/
+/*
+ * Remove the first key & value pair from this page to "recipient" page, then
+ * update relavent key & value pair in its parent page.
+ */
+// recipient <= this
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveFirstToEndOf(
+    BPlusTreeLeafPage *recipient,
+    BufferPoolManager *buffer_pool_manager) {
+
+  assert(recipient->GetSize() + 1 <= recipient->GetMaxSize());
+  assert(GetSize() >= 1);
+  recipient->array_[GetSize()] = MappingType{KeyAt(0), ValueAt(0)};
+  recipient->IncreaseSize(1);
+  IncreaseSize(-1);
+  memmove(array_, array_ + 1, static_cast<size_t>(GetSize() * sizeof(MappingType))); 
+  //update relavent key & value pair in its parent page.
+  // Page *page = buffer_pool_manager->FetchPage(GetParentPageId());
+  // auto parent_node = reinterpret_cast<B_PLUS_TREE_INTERNAL_PAGE_TYPE *>(page->GetData());
+  // parent_node->SetKeyAt(parent_node->ValueIndex(GetPageId()), array_[0].first);
+  // buffer_pool_manager->UnpinPage(GetParentPageId(), true);
+}
+/*
+ * Remove the last key & value pair from this page to "recipient" page, then
+ * update relavent key & value pair in its parent page.
+ */
+// this <= recipient
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveLastToFrontOf(
+    BPlusTreeLeafPage *recipient, int parent_index,
+    BufferPoolManager *buffer_pool_manager) {                                        
+  assert(recipient->GetSize() + 1 <= recipient->GetMaxSize());
+  assert(GetSize() >= 1); 
+  for (int i = 1; i < GetSize(); i++) {
+    recipient->array_[i] = recipient->array_[i - 1];
+  }
+  recipient->IncreaseSize(1);
+  recipient->array_[0] = MappingType{KeyAt(GetSize() - 1), ValueAt(GetSize() - 1)};
+  IncreaseSize(-1);
+  //update relavent key & value pair in its parent page.
+  // Page *page = buffer_pool_manager->FetchPage(recipient->GetParentPageId());
+  // auto parent_node = reinterpret_cast<B_PLUS_TREE_INTERNAL_PAGE_TYPE *>(page->GetData());
+  // parent_node->SetKeyAt(parent_index, recipient->KeyAt(0)); 
+  // buffer_pool_manager->UnpinPage(recipient->GetParentPageId(), true);
+}
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::Debug() {
-  std::cout << "print: \n";
   for (int i = 0; i < GetSize(); i++) {
     std::cout << array_[i].first << ' ';
   }

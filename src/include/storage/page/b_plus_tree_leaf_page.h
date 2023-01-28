@@ -49,6 +49,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetNextPageId() const -> page_id_t;
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
+  auto ValueAt(int index) const -> ValueType;
   //=========================================================
   // 二分查找 第一个 >= key 的位置
   auto KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int;
@@ -57,8 +58,16 @@ class BPlusTreeLeafPage : public BPlusTreePage {
 
   auto Lookup(const KeyType &key, ValueType &value, const KeyComparator &comparator) const -> bool;
 
+  auto RemoveAndDeleteRecord(const KeyType &key, const KeyComparator &comparator) -> int;
+
   // Split and Merge utility methods
   void MoveHalfTo(BPlusTreeLeafPage *recipient, BufferPoolManager *buffer_pool_manager);
+  
+  void MoveAllTo(BPlusTreeLeafPage *recipient, int /* Unused */, BufferPoolManager * /* Unused */);
+
+  void MoveFirstToEndOf(BPlusTreeLeafPage *recipient, BufferPoolManager *buffer_pool_manager);
+
+  void MoveLastToFrontOf(BPlusTreeLeafPage *recipient, int parent_index, BufferPoolManager *buffer_pool_manager);
 
   //=========================================================
   // debug()

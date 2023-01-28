@@ -88,6 +88,22 @@ class BPlusTree {
   template <typename N>
   auto Split(N *node) -> N *;
 
+  template <typename N> 
+  auto CoalesceOrRedistribute(N *node, Transaction *transaction) -> bool;
+
+  auto AdjustRoot(BPlusTreePage *old_root_node) -> bool; 
+
+  template <typename N>
+  auto Coalesce(
+          N *&neighbor_node, N *&node,
+          BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *&parent,
+          int index, Transaction *transaction = nullptr) -> bool;
+
+  template <typename N> void Redistribute(N *neighbor_node, N *node, int index);
+
+  template <typename N>
+  auto FindLeftSibling(N *node, N * &sibling, Transaction *transaction = nullptr) -> bool;
+
   // ++++++++++ 框架代码【没有】的函数
   void UpdateRootPageId(int insert_record = 0);
 
