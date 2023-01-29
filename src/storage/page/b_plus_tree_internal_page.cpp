@@ -100,7 +100,7 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *recipient,
                                                 BufferPoolManager *buffer_pool_manager) {
   assert(recipient != nullptr);
-  assert(GetSize() == GetMaxSize() + 1);
+  // assert(GetSize() == GetMaxSize() + 1);
   // copy last half [mid, size) 移动到新的页
   int total = GetSize();
   int copy_start_index = total >> 1;

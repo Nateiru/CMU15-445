@@ -98,7 +98,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &val
   assert(idx >= 0);
   IncreaseSize(1);
   int cur_size = GetSize();
-  for (int i = cur_size - 1; i > idx; i--) {
+  for (int i = cur_size - 1; i > idx; --i) {
     array_[i] = array_[i - 1];
   }
   array_[idx] = MappingType{key, value};
@@ -131,7 +131,7 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveHalfTo(BPlusTreeLeafPage *recipient,
                                             __attribute__((unused)) BufferPoolManager *buffer_pool_manager) {
   assert(recipient != nullptr);
-  assert(GetSize() == GetMaxSize() + 1);
+  // assert(GetSize() == GetMaxSize());
   // copy last half [mid, size) 移动到新的页
   int total = GetSize();
   int copy_start_index = total >> 1;
@@ -238,10 +238,11 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveLastToFrontOf(
 }
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::Debug() {
+  std::cout << "DEBUG +++++++++++++++++\n";
   for (int i = 0; i < GetSize(); i++) {
     std::cout << array_[i].first << ' ';
   }
-  std::cout << "\n\n\n";
+  std::cout << "\nDEBUG +++++++++++++++++\n\n";
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;
