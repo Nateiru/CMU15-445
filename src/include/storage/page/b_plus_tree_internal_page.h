@@ -47,7 +47,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> ValueType;
   // ==== Split
   void MoveHalfTo(BPlusTreeInternalPage *recipient, BufferPoolManager *buffer_pool_manager);
-  
+
   void MoveAllTo(BPlusTreeInternalPage *recipient, int index_in_parent, BufferPoolManager *buffer_pool_manager);
 
   void MoveFirstToEndOf(BPlusTreeInternalPage *recipient, BufferPoolManager *buffer_pool_manager);
@@ -62,7 +62,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
 
   void Remove(int index);
 
-  ValueType RemoveAndReturnOnlyChild();
+  auto RemoveAndReturnOnlyChild() -> ValueType;
 
   void Debug() {}
 

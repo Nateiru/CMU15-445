@@ -62,7 +62,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
 
   // Split and Merge utility methods
   void MoveHalfTo(BPlusTreeLeafPage *recipient, BufferPoolManager *buffer_pool_manager);
-  
+
   void MoveAllTo(BPlusTreeLeafPage *recipient, int /* Unused */, BufferPoolManager * /* Unused */);
 
   void MoveFirstToEndOf(BPlusTreeLeafPage *recipient, BufferPoolManager *buffer_pool_manager);
