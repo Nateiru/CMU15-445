@@ -156,6 +156,8 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
   InternalPage *parent_node = reinterpret_cast<InternalPage *>(parent_page->GetData());
   // insert new node after old node
   parent_node->InsertNodeAfter(old_node->GetPageId(), key, new_node->GetPageId());
+  new_node->SetParentPageId(parent_page_id);
+  buffer_pool_manager_->UnpinPage(new_node->GetPageId(), true);
   if (parent_node->GetSize() > parent_node->GetMaxSize()) {
     // need to split
     InternalPage *new_parent_node = Split(parent_node);  // new_parent_node pined
