@@ -50,6 +50,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
   auto ValueAt(int index) const -> ValueType;
+  auto GetItem(int index) const -> const MappingType &;
   //=========================================================
   // 二分查找 第一个 >= key 的位置
   auto KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int;

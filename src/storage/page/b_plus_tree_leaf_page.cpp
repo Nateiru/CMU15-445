@@ -85,6 +85,12 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType {
   assert(index >= 0);
   return array_[index].second;
 }
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) const -> const MappingType &{
+  assert(index >= 0 && index < GetSize());
+  return array_[index];
+}
+
 /*****************************************************************************
  * INSERTION
  *****************************************************************************/

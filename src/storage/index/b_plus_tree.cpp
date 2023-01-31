@@ -393,10 +393,9 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
-  return INDEXITERATOR_TYPE();
-  // KeyType _;
-  // auto start_leaf = FindLeafPage(_, true);
-  // return INDEXITERATOR_TYPE(start_leaf, 0, buffer_pool_manager_);
+  KeyType _;
+  auto start_leaf = FindLeafPage(_, true);
+  return INDEXITERATOR_TYPE(start_leaf, 0, buffer_pool_manager_);
 }
 
 /*
@@ -406,13 +405,12 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
-  return INDEXITERATOR_TYPE();
-  // auto start_leaf = FindLeafPage(key);
-  // if (auto_leaf == nullptr) {
-  //   return INDEXITERATOR_TYPE(start_leaf, 0, buffer_pool_manager_);
-  // }
-  // int start_index = start_leaf->KeyIndex(key, comparator_);
-  // return INDEXITERATOR_TYPE(start_leaf, start_index, buffer_pool_manager_);
+  auto start_leaf = FindLeafPage(key);
+  if (start_leaf == nullptr) {
+    return INDEXITERATOR_TYPE(start_leaf, 0, buffer_pool_manager_);
+  }
+  int start_index = start_leaf->KeyIndex(key, comparator_);
+  return INDEXITERATOR_TYPE(start_leaf, start_index, buffer_pool_manager_);
 }
 
 /*
@@ -421,7 +419,9 @@ auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
+auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE {
+  return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_);
+}
 
 /**
  * @return Page id of the root of this tree
