@@ -75,7 +75,7 @@ class BPlusTree {
   void RemoveFromFile(const std::string &file_name, Transaction *transaction = nullptr);
 
  private:
-  // ++++++++++ 框架代码【没有】的函数
+  // ========================== 框架代码【没有】的函数
   auto StartNewTree(const KeyType &key, const ValueType &value) -> void;
 
   auto InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
@@ -103,7 +103,10 @@ class BPlusTree {
   template <typename N>
   auto FindLeftSibling(N *node, N *&sibling, Transaction *transaction = nullptr) -> bool;
 
-  // ++++++++++ 框架代码【没有】的函数
+  auto IsBalanced(page_id_t pid) -> int;
+
+  auto Check() -> bool;
+  // ==========================框架代码【没有】的函数
   void UpdateRootPageId(int insert_record = 0);
 
   /* Debug Routines for FREE!! */

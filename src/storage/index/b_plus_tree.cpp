@@ -48,6 +48,7 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   // result->at(0) = target_rid;
   result->push_back(target_rid);
   buffer_pool_manager_->UnpinPage(target_leaf_page->GetPageId(), false);
+  assert(Check());
   return true;
 }
 
@@ -70,6 +71,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   } else {
     ret = InsertIntoLeaf(key, value, transaction);
   }
+  assert(Check());
   return ret;
 }
 
@@ -236,6 +238,7 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     // leaf_page 没被删除
     buffer_pool_manager_->UnpinPage(leaf_page->GetPageId(), true);
   }
+  assert(Check());
 }
 /*
  * User needs to first find the sibling of input page. If sibling's size + input
@@ -640,6 +643,57 @@ void BPLUSTREE_TYPE::ToString(BPlusTreePage *page, BufferPoolManager *bpm) const
   }
   bpm->UnpinPage(page->GetPageId(), false);
 }
+/***************************************************************************
+ *  Check integrity of B+ tree data structure.
+ ***************************************************************************/
+/**
+ * This function is for check B+ tree is balanced ?
+ * return : the height of B+ tree ( >=0 ) 
+ * the children's height of node must be same, which means balanced  
+ */
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::IsBalanced(page_id_t pid) -> int {
+  if (IsEmpty()) {
+    return 1;
+  }
+  auto node = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(pid));
+  if (node == nullptr){
+    throw Exception("all page are pinned while isBalanced");
+  }
+  // height of leaf = 0 
+  if (node->IsLeafPage()) {
+    buffer_pool_manager_->UnpinPage(pid, false);
+    return 0;
+  }
+  auto page = reinterpret_cast<InternalPage *>(node);
+  int cur_height = 0;
+  int last_child_height = -2;
+  for (int i = 0; i < page->GetSize(); i++) {
+    int child_height = IsBalanced(page->ValueAt(i));
+    if (child_height >= 0 && last_child_height == -2) {
+      last_child_height = child_height;
+      cur_height = child_height + 1;
+    }
+    else if(last_child_height != child_height) {
+      cur_height = -1; // 不平衡
+      break;
+    }
+  }
+  buffer_pool_manager_->UnpinPage(pid, false);
+  return cur_height;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::Check() -> bool {
+  bool passed = 1;
+  bool is_balanced = (IsBalanced(root_page_id_) >= 0);
+  passed &= is_balanced;
+  if (!is_balanced) {
+    std::cout << "problem in balance!\n";
+  }
+  return passed;
+}
+
 
 template class BPlusTree<GenericKey<4>, RID, GenericComparator<4>>;
 template class BPlusTree<GenericKey<8>, RID, GenericComparator<8>>;
