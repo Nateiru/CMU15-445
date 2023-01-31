@@ -65,5 +65,22 @@ void BPlusTreePage::SetPageId(page_id_t page_id) { page_id_ = page_id; }
  * Helper methods to set lsn
  */
 void BPlusTreePage::SetLSN(lsn_t lsn) { lsn_ = lsn; }
+/*
+ * Helper methods to check if is safe after one operation
+ */
+auto BPlusTreePage::IsSafe(OpType op) -> bool {
+  if (op == OpType::INSERT) {
+    return GetSize() < GetMaxSize();
+  }
+  // remove 
+  if (IsRootPage()) {
+    if (IsLeafPage()) {
+      return true;
+    }
+    // Internal Page 保证删除后 Size >= 2
+    return GetSize() > 2;
+  }
+  return GetSize() > GetMinSize();
+}
 
 }  // namespace bustub

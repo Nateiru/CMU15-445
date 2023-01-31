@@ -80,13 +80,14 @@ class BPlusTree {
 
   auto InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
 
-  auto FindLeafPage(const KeyType &key, bool left_most = false) -> LeafPage *;
+  auto FindLeafPage(const KeyType &key, bool left_most = false,
+                    OpType op = OpType::READ, Transaction *transaction = nullptr) -> LeafPage *;
 
   void InsertIntoParent(BPlusTreePage *old_node, const KeyType &key, BPlusTreePage *new_node,
                         Transaction *transaction = nullptr);
 
   template <typename N>
-  auto Split(N *node) -> N *;
+  auto Split(N *node, Transaction *transaction) -> N *;
 
   template <typename N>
   auto CoalesceOrRedistribute(N *node, Transaction *transaction) -> bool;
@@ -106,6 +107,24 @@ class BPlusTree {
   auto IsBalanced(page_id_t pid) -> int;
 
   auto Check() -> bool;
+
+  void UnlatchAndUnpin(enum OpType op, Transaction *transaction, bool flag = false);
+  
+  void LockRoot(OpType op) {
+    if (op == OpType::READ) {
+      rwlatch_.RLock();
+    }else {
+      rwlatch_.WLock();
+    }
+  }
+  void UnLockRoot(OpType op) {
+    if (op == OpType::READ) {
+      rwlatch_.RUnlock();
+    }else {
+      rwlatch_.WUnlock();
+    }
+  }
+
   // ==========================框架代码【没有】的函数
   void UpdateRootPageId(int insert_record = 0);
 
@@ -121,6 +140,7 @@ class BPlusTree {
   KeyComparator comparator_;
   int leaf_max_size_;
   int internal_max_size_;
+  ReaderWriterLatch rwlatch_;
 };
 
 }  // namespace bustub
