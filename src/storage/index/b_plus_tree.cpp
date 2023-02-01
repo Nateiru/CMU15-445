@@ -538,24 +538,24 @@ auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(nul
  * index iterator
  * @return : index iterator
  */
-INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::begin() -> INDEXITERATOR_TYPE { return Begin(); }
+// INDEX_TEMPLATE_ARGUMENTS
+// auto BPLUSTREE_TYPE::begin() -> INDEXITERATOR_TYPE { return Begin(); }
 
-/*
- * Input parameter is low key, find the leaf page that contains the input key
- * first, then construct index iterator
- * @return : index iterator
- */
-INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::begin(const KeyType &key) -> INDEXITERATOR_TYPE { return Begin(key); }
+// /*
+//  * Input parameter is low key, find the leaf page that contains the input key
+//  * first, then construct index iterator
+//  * @return : index iterator
+//  */
+// INDEX_TEMPLATE_ARGUMENTS
+// auto BPLUSTREE_TYPE::begin(const KeyType &key) -> INDEXITERATOR_TYPE { return Begin(key); }
 
-/*
- * Input parameter is void, construct an index iterator representing the end
- * of the key/value pair in the leaf node
- * @return : index iterator
- */
-INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::end() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_); }
+// /*
+//  * Input parameter is void, construct an index iterator representing the end
+//  * of the key/value pair in the leaf node
+//  * @return : index iterator
+//  */
+// INDEX_TEMPLATE_ARGUMENTS
+// auto BPLUSTREE_TYPE::end() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_); }
 /**
  * @return Page id of the root of this tree
  */

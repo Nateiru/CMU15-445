@@ -24,7 +24,7 @@ class IndexIterator {
  public:
   // you may define your own constructor based on your member variables
   explicit IndexIterator(B_PLUS_TREE_LEAF_PAGE_TYPE *leaf = nullptr, int index = 0,
-                BufferPoolManager *buffer_pool_manager = nullptr);
+                         BufferPoolManager *buffer_pool_manager = nullptr);
   ~IndexIterator();  // NOLINT
 
   auto IsEnd() -> bool;
