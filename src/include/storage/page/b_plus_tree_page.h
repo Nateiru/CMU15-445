@@ -44,7 +44,10 @@ class BPlusTreePage {
  public:
   auto IsLeafPage() const -> bool;
   auto IsRootPage() const -> bool;
-  void SetPageType(IndexPageType page_type);
+  auto IsValidPage() const -> bool {
+    return (page_type_ != IndexPageType::INVALID_INDEX_PAGE);
+  }
+  void SetPageType(IndexPageType page_type = IndexPageType::INVALID_INDEX_PAGE);
 
   auto GetSize() const -> int;
   void SetSize(int size);
