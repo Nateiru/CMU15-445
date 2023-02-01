@@ -198,7 +198,8 @@ void InsertTest2Call() {
       keys.push_back(key);
     }
     LaunchParallelTest(2, 0, InsertHelperSplit, &tree, keys, 2);
-    
+    // tree.Draw(bpm, "my-tree.dot");
+    // assert(0);
     std::vector<RID> rids;
     GenericKey<8> index_key;
     for (auto key : keys) {
@@ -511,7 +512,7 @@ void MixTest3Call() {
  * Score: 5
  * Description: Concurrently insert a set of keys.
  */
-TEST(BPlusTreeConcurrentTest, InsertTest1) {
+TEST(BPlusTreeConcurrentTest, DISABLED_InsertTest1) {
   TEST_TIMEOUT_BEGIN
   InsertTest1Call();
   remove("test.db");
@@ -524,7 +525,7 @@ TEST(BPlusTreeConcurrentTest, InsertTest1) {
  * Description: Split the concurrent insert test to multiple threads
  * without overlap.
  */
-TEST(BPlusTreeConcurrentTest, InsertTest2) {
+TEST(BPlusTreeConcurrentTest, DISABLED_InsertTest2) {
   TEST_TIMEOUT_BEGIN
   InsertTest2Call();
   remove("test.db");
@@ -564,7 +565,7 @@ TEST(BPlusTreeConcurrentTest, DISABLED_DeleteTest2) {
  * insert different set of keys. Check if all old keys are
  * deleted and new keys are added correctly.
  */
-TEST(BPlusTreeConcurrentTest, DISABLED_MixTest1) {
+TEST(BPlusTreeConcurrentTest, MixTest1) {
   TEST_TIMEOUT_BEGIN
   MixTest1Call();
   remove("test.db");

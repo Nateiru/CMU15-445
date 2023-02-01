@@ -62,13 +62,18 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) -> bool {
+  
   LockRoot(OpType::INSERT);
+  // std::cout << "Begin: " << key << std::endl;
   if (IsEmpty()) {
     StartNewTree(key, value);
+    // std::cout << "Build: " << key << std::endl;
     UnLockRoot(OpType::INSERT);
     return true;
   }
+  
   bool ret = InsertIntoLeaf(key, value, transaction);
+  // std::cout << "Finish: " << key << std::endl;
   UnlatchAndUnpin(OpType::INSERT, transaction, 1);
   return ret;
 }
@@ -120,8 +125,10 @@ auto BPLUSTREE_TYPE::InsertIntoLeaf(const KeyType &key, const ValueType &value, 
   leaf_page->Insert(key, value, comparator_);
   // 如果size不满足条件 需要分裂
   if (leaf_page->GetSize() > leaf_page->GetMaxSize()) {
+    // std::cout << "Full!!!!!!!!!!!!" << std::endl;
     LeafPage *new_leaf_page = Split(leaf_page, transaction);
     InsertIntoParent(leaf_page, new_leaf_page->KeyAt(0), new_leaf_page, transaction);
+    // std::cout << "Split!!!!!!!!!!!!" << std::endl;
   }
   // buffer_pool_manager_->UnpinPage(leaf_page->GetPageId(), true);
   return true;
@@ -140,6 +147,8 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
                                       Transaction *transaction) {
   if (old_node->IsRootPage()) {
     auto new_page = buffer_pool_manager_->NewPage(&root_page_id_);
+    new_page->WLatch();
+    transaction->AddIntoPageSet(new_page);
     auto new_root_page = reinterpret_cast<InternalPage *>(new_page->GetData());
     // new root page init
     new_root_page->Init(root_page_id_, INVALID_PAGE_ID, internal_max_size_);
@@ -150,7 +159,7 @@ void BPLUSTREE_TYPE::InsertIntoParent(BPlusTreePage *old_node, const KeyType &ke
     new_node->SetParentPageId(root_page_id_);
     // fetch page and new page need to unpin page
     // buffer_pool_manager_->UnpinPage(new_node->GetPageId(), true);
-    buffer_pool_manager_->UnpinPage(new_root_page->GetPageId(), true);
+    // buffer_pool_manager_->UnpinPage(new_root_page->GetPageId(), true);
     return;
   }
   auto parent_page_id = old_node->GetParentPageId();
@@ -223,8 +232,6 @@ auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool left_most,
     auto next_node = reinterpret_cast<BPlusTreePage *>(next_page);
     if (transaction == nullptr) {
       buffer_pool_manager_->UnpinPage(node->GetPageId(), false);
-    }else {
-      transaction->AddIntoPageSet(page);
     }
     page = next_page;
     node = next_node;
@@ -234,8 +241,12 @@ auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool left_most,
     }else {
       page->WLatch();
       if (node->IsSafe(op)) {
+        // std::cout << "SAFE: " << root_page_id_<< std::endl;
         UnlatchAndUnpin(op, transaction);
       }
+    }
+    if (transaction != nullptr) {
+      transaction->AddIntoPageSet(page);
     }
   }
   return reinterpret_cast<LeafPage *>(page->GetData());
@@ -247,10 +258,17 @@ void BPLUSTREE_TYPE::UnlatchAndUnpin(enum OpType op,Transaction *transaction, bo
     return;
   }
   auto pages = transaction->GetPageSet();
+  // std::cout <<"size: "<< pages->size() << std::endl;
+  // for (auto page : *pages) {
+  //   page_id_t page_id = page->GetPageId();
+  //   std::cout <<page_id << ' ';
+  // }
+  // std::cout << std::endl;
+  
   for (auto page : *pages) {
     page_id_t page_id = page->GetPageId();
     BPlusTreePage * node = reinterpret_cast<BPlusTreePage *> (page->GetData());
-    // std::cout <<page_id << ' ' <<root_page_id_ << '\n';
+    
     if (op == OpType::READ) {
       if (node->IsRootPage()) {
         UnLockRoot(op);
@@ -259,6 +277,7 @@ void BPLUSTREE_TYPE::UnlatchAndUnpin(enum OpType op,Transaction *transaction, bo
       buffer_pool_manager_->UnpinPage(page_id, false);
     } else {
       if (node->IsRootPage() && (flag || node->IsSafe(op))) {
+        // std::cout << "root_id: " << root_page_id_ << std::endl;
         UnLockRoot(op);
       }
       page->WUnlatch();
