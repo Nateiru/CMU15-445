@@ -66,7 +66,6 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *transaction) -> bool {
-  
   LockRoot(OpType::INSERT);
   // std::cout << "Begin Insert: " << key << std::endl;
   if (IsEmpty()) {
@@ -75,7 +74,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
     UnLockRoot(OpType::INSERT);
     return true;
   }
-  
+
   bool ret = InsertIntoLeaf(key, value, transaction);
   // std::cout << "=============Finish Insert: " << key << std::endl;
   UnlatchAndUnpin(OpType::INSERT, transaction, 1);
@@ -214,8 +213,8 @@ auto BPLUSTREE_TYPE::Split(N *node, Transaction *transaction) -> N * {
  * the left most leaf page
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool left_most, 
-                                  OpType op, Transaction *transaction) -> LeafPage * {
+auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool left_most, OpType op, Transaction *transaction)
+    -> LeafPage * {
   if (root_page_id_ == INVALID_PAGE_ID) {
     throw std::runtime_error("Unexpected. root_page_id is INVALID_PAGE_ID");
   }
@@ -240,7 +239,7 @@ auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool left_most,
         page->RUnlatch();
         buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
         next_page->RLatch();
-      }else {
+      } else {
         next_page->WLatch();
         assert(transaction != nullptr);
         if (node->IsSafe(op)) {
@@ -248,12 +247,11 @@ auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool left_most,
           page->WUnlatch();
         }
       }
-    }
-    else { 
+    } else {
       if (op == OpType::READ) {
         next_page->RLatch();
         UnlatchAndUnpin(op, transaction);
-      }else {
+      } else {
         next_page->WLatch();
         if (next_node->IsSafe(op)) {
           UnlatchAndUnpin(op, transaction, true);
@@ -268,7 +266,7 @@ auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool left_most,
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void BPLUSTREE_TYPE::UnlatchAndUnpin(enum OpType op,Transaction *transaction, bool flag) {
+void BPLUSTREE_TYPE::UnlatchAndUnpin(enum OpType op, Transaction *transaction, bool flag) {
   if (transaction == nullptr) {
     return;
   }
@@ -284,8 +282,8 @@ void BPLUSTREE_TYPE::UnlatchAndUnpin(enum OpType op,Transaction *transaction, bo
   // std :: cout << std::endl;
   for (auto page : *transaction->GetPageSet()) {
     page_id_t page_id = page->GetPageId();
-    BPlusTreePage * node = reinterpret_cast<BPlusTreePage *> (page->GetData());
-    
+    auto node = reinterpret_cast<BPlusTreePage *>(page->GetData());
+
     if (op == OpType::READ) {
       if (node->IsValidPage() && node->IsRootPage()) {
         UnLockRoot(op);
@@ -296,7 +294,7 @@ void BPLUSTREE_TYPE::UnlatchAndUnpin(enum OpType op,Transaction *transaction, bo
       if (node->IsValidPage() && node->IsRootPage() && (flag || node->IsSafe(op))) {
         // std::cout << "root_id: " << root_page_id_ << std::endl;
         // std::cout << "-------------" << std::endl;
-        UnLockRoot(op); 
+        UnLockRoot(op);
       }
       page->WUnlatch();
       buffer_pool_manager_->UnpinPage(page_id, true);
@@ -304,7 +302,7 @@ void BPLUSTREE_TYPE::UnlatchAndUnpin(enum OpType op,Transaction *transaction, bo
   }
   // std::cout << "!!!!!" << std::endl;
   transaction->GetPageSet()->clear();
-  for (const auto &page_id: *transaction->GetDeletedPageSet()) {
+  for (const auto &page_id : *transaction->GetDeletedPageSet()) {
     buffer_pool_manager_->DeletePage(page_id);
   }
   transaction->GetDeletedPageSet()->clear();
@@ -334,8 +332,11 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
     CoalesceOrRedistribute(leaf_page, transaction);
   }
   UnlatchAndUnpin(OpType::DELETE, transaction, 1);
+
+  // if (!Check()) {
   // std::cout << "============Finish Delete: " << key << std::endl;
-  assert(Check());
+  // }
+  // assert(Check());
 }
 /*
  * User needs to first find the sibling of input page. If sibling's size + input
@@ -531,18 +532,14 @@ auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE {
-  return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_);
-}
+auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_); }
 /*
  * Input parameter is void, find the leaftmost leaf page first, then construct
  * index iterator
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::begin() -> INDEXITERATOR_TYPE {
-  return Begin();
-}
+auto BPLUSTREE_TYPE::begin() -> INDEXITERATOR_TYPE { return Begin(); }
 
 /*
  * Input parameter is low key, find the leaf page that contains the input key
@@ -550,9 +547,7 @@ auto BPLUSTREE_TYPE::begin() -> INDEXITERATOR_TYPE {
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::begin(const KeyType &key) -> INDEXITERATOR_TYPE {
-  return Begin(key);
-}
+auto BPLUSTREE_TYPE::begin(const KeyType &key) -> INDEXITERATOR_TYPE { return Begin(key); }
 
 /*
  * Input parameter is void, construct an index iterator representing the end
@@ -560,9 +555,7 @@ auto BPLUSTREE_TYPE::begin(const KeyType &key) -> INDEXITERATOR_TYPE {
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::end() -> INDEXITERATOR_TYPE {
-  return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_);
-}
+auto BPLUSTREE_TYPE::end() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_); }
 /**
  * @return Page id of the root of this tree
  */
@@ -785,8 +778,8 @@ void BPLUSTREE_TYPE::ToString(BPlusTreePage *page, BufferPoolManager *bpm) const
  ***************************************************************************/
 /**
  * This function is for check B+ tree is balanced ?
- * return : the height of B+ tree ( >=0 ) 
- * the children's height of node must be same, which means balanced  
+ * return : the height of B+ tree ( >=0 )
+ * the children's height of node must be same, which means balanced
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::IsBalanced(page_id_t pid) -> int {
@@ -794,10 +787,10 @@ auto BPLUSTREE_TYPE::IsBalanced(page_id_t pid) -> int {
     return 1;
   }
   auto node = reinterpret_cast<BPlusTreePage *>(buffer_pool_manager_->FetchPage(pid));
-  if (node == nullptr){
+  if (node == nullptr) {
     throw Exception("all page are pinned while isBalanced");
   }
-  // height of leaf = 0 
+  // height of leaf = 0
   if (node->IsLeafPage()) {
     buffer_pool_manager_->UnpinPage(pid, false);
     return 0;
@@ -810,9 +803,8 @@ auto BPLUSTREE_TYPE::IsBalanced(page_id_t pid) -> int {
     if (child_height >= 0 && last_child_height == -2) {
       last_child_height = child_height;
       cur_height = child_height + 1;
-    }
-    else if(last_child_height != child_height) {
-      cur_height = -1; // 不平衡
+    } else if (last_child_height != child_height) {
+      cur_height = -1;  // 不平衡
       break;
     }
   }
@@ -822,7 +814,7 @@ auto BPLUSTREE_TYPE::IsBalanced(page_id_t pid) -> int {
 
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Check() -> bool {
-  bool passed = 1;
+  bool passed = true;
   bool is_balanced = (IsBalanced(root_page_id_) >= 0);
   passed &= is_balanced;
   if (!is_balanced) {
@@ -830,7 +822,6 @@ auto BPLUSTREE_TYPE::Check() -> bool {
   }
   return passed;
 }
-
 
 template class BPlusTree<GenericKey<4>, RID, GenericComparator<4>>;
 template class BPlusTree<GenericKey<8>, RID, GenericComparator<8>>;

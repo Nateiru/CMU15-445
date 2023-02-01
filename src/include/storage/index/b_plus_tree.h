@@ -61,7 +61,7 @@ class BPlusTree {
   auto Begin() -> INDEXITERATOR_TYPE;
   auto Begin(const KeyType &key) -> INDEXITERATOR_TYPE;
   auto End() -> INDEXITERATOR_TYPE;
-  
+
   auto begin() -> INDEXITERATOR_TYPE;
   auto begin(const KeyType &key) -> INDEXITERATOR_TYPE;
   auto end() -> INDEXITERATOR_TYPE;
@@ -84,8 +84,8 @@ class BPlusTree {
 
   auto InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
 
-  auto FindLeafPage(const KeyType &key, bool left_most = false,
-                    OpType op = OpType::READ, Transaction *transaction = nullptr) -> LeafPage *;
+  auto FindLeafPage(const KeyType &key, bool left_most = false, OpType op = OpType::READ,
+                    Transaction *transaction = nullptr) -> LeafPage *;
 
   void InsertIntoParent(BPlusTreePage *old_node, const KeyType &key, BPlusTreePage *new_node,
                         Transaction *transaction = nullptr);
@@ -113,18 +113,18 @@ class BPlusTree {
   auto Check() -> bool;
 
   void UnlatchAndUnpin(enum OpType op, Transaction *transaction, bool flag = false);
-  
+
   void LockRoot(OpType op) {
     if (op == OpType::READ) {
       rwlatch_.RLock();
-    }else {
+    } else {
       rwlatch_.WLock();
     }
   }
   void UnLockRoot(OpType op) {
     if (op == OpType::READ) {
       rwlatch_.RUnlock();
-    }else {
+    } else {
       rwlatch_.WUnlock();
     }
   }

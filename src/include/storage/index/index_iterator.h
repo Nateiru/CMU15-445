@@ -23,7 +23,8 @@ INDEX_TEMPLATE_ARGUMENTS
 class IndexIterator {
  public:
   // you may define your own constructor based on your member variables
-  IndexIterator(B_PLUS_TREE_LEAF_PAGE_TYPE *leaf = nullptr, int index = 0, BufferPoolManager *buffer_pool_manager = nullptr);
+  explicit IndexIterator(B_PLUS_TREE_LEAF_PAGE_TYPE *leaf = nullptr, int index = 0,
+                BufferPoolManager *buffer_pool_manager = nullptr);
   ~IndexIterator();  // NOLINT
 
   auto IsEnd() -> bool;
@@ -32,13 +33,10 @@ class IndexIterator {
 
   auto operator++() -> IndexIterator &;
 
-  auto operator==(const IndexIterator &itr) const -> bool {
-    return ((leaf_ == itr.leaf_) && (index_ == itr.index_));
-  }
+  auto operator==(const IndexIterator &itr) const -> bool { return ((leaf_ == itr.leaf_) && (index_ == itr.index_)); }
 
-  auto operator!=(const IndexIterator &itr) const -> bool {
-    return ((leaf_ != itr.leaf_) || (index_ != itr.index_));
-  }
+  auto operator!=(const IndexIterator &itr) const -> bool { return ((leaf_ != itr.leaf_) || (index_ != itr.index_)); }
+
  private:
   // add your own private member variables here
   void UnlatchAndUnPin() {
@@ -49,7 +47,7 @@ class IndexIterator {
     buffer_pool_manager_->UnpinPage(leaf_->GetPageId(), false);
     buffer_pool_manager_->UnpinPage(leaf_->GetPageId(), false);
   }
-  B_PLUS_TREE_LEAF_PAGE_TYPE *leaf_; 
+  B_PLUS_TREE_LEAF_PAGE_TYPE *leaf_;
   int index_;
   BufferPoolManager *buffer_pool_manager_;
 };

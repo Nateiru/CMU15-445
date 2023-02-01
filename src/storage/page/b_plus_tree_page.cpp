@@ -72,7 +72,7 @@ auto BPlusTreePage::IsSafe(OpType op) -> bool {
   if (op == OpType::INSERT) {
     return GetSize() < GetMaxSize();
   }
-  // remove 
+  // remove
   if (IsRootPage()) {
     if (IsLeafPage()) {
       return true;

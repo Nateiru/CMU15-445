@@ -6,8 +6,8 @@
 #include <cstdio>
 
 #include "buffer/buffer_pool_manager_instance.h"
-#include "storage/index/b_plus_tree.h"
 #include "gtest/gtest.h"
+#include "storage/index/b_plus_tree.h"
 #include "test_util.h"  // NOLINT
 namespace bustub {
 
@@ -260,7 +260,7 @@ TEST(BPlusTreeTests, DISABLED_DeleteTest2) {
     tree.Insert(index_key, rid, transaction);
   }
   tree.Draw(bpm, "my-tree.dot");
-  
+
   std::vector<RID> rids;
   for (auto key : keys) {
     rids.clear();
@@ -283,7 +283,7 @@ TEST(BPlusTreeTests, DISABLED_DeleteTest2) {
   }
 
   EXPECT_EQ(current_key, keys.size() + 1);
-  
+
   std::vector<int64_t> remove_keys = {1, 5, 3, 4};
   for (auto key : remove_keys) {
     index_key.SetFromInteger(key);
@@ -426,7 +426,7 @@ TEST(BPlusTreeTests, SequentialMixTest) {
   // first, populate index
   std::vector<int64_t> for_insert;
   std::vector<int64_t> for_delete;
-  size_t sieve = 2; // divide evenly
+  size_t sieve = 2;  // divide evenly
   size_t total_keys = 200;
   for (size_t i = 1; i <= total_keys; i++) {
     if (i % sieve == 0) {
@@ -456,7 +456,7 @@ TEST(BPlusTreeTests, SequentialMixTest) {
   for (auto key : for_delete) {
     index_key.SetFromInteger(key);
     tree.Remove(index_key, transaction);
-    bpm->FlushAllPages(); 
+    bpm->FlushAllPages();
   }
   tree.Draw(bpm, "my-tree-delete.dot");
   // assert(0);
@@ -479,4 +479,4 @@ TEST(BPlusTreeTests, SequentialMixTest) {
   remove("test.db");
   remove("test.log");
 }
-}
+}  // namespace bustub

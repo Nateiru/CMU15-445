@@ -86,7 +86,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType {
   return array_[index].second;
 }
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) const -> const MappingType &{
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetItem(int index) const -> const MappingType & {
   assert(index >= 0 && index < GetSize());
   return array_[index];
 }
@@ -232,7 +232,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveLastToFrontOf(BPlusTreeLeafPage *recipient,
                                                    BufferPoolManager *buffer_pool_manager) {
   assert(recipient->GetSize() + 1 <= recipient->GetMaxSize());
   assert(GetSize() >= 1);
-  for (int i = 1; i < GetSize(); i++) {
+  for (int i = recipient->GetSize(); i >= 1; --i) {
     recipient->array_[i] = recipient->array_[i - 1];
   }
   recipient->IncreaseSize(1);

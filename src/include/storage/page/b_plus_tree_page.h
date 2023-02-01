@@ -26,7 +26,7 @@ namespace bustub {
 
 // define page type enum
 enum class IndexPageType { INVALID_INDEX_PAGE = 0, LEAF_PAGE, INTERNAL_PAGE };
-enum class OpType {READ = 0, INSERT, DELETE};
+enum class OpType { READ = 0, INSERT, DELETE };
 /**
  * Both internal and leaf page are inherited from this page.
  *
@@ -44,9 +44,7 @@ class BPlusTreePage {
  public:
   auto IsLeafPage() const -> bool;
   auto IsRootPage() const -> bool;
-  auto IsValidPage() const -> bool {
-    return (page_type_ != IndexPageType::INVALID_INDEX_PAGE);
-  }
+  auto IsValidPage() const -> bool { return (page_type_ != IndexPageType::INVALID_INDEX_PAGE); }
   void SetPageType(IndexPageType page_type = IndexPageType::INVALID_INDEX_PAGE);
 
   auto GetSize() const -> int;
