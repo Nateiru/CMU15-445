@@ -17,7 +17,9 @@ INDEXITERATOR_TYPE::IndexIterator(B_PLUS_TREE_LEAF_PAGE_TYPE *leaf, int index, B
 
 
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::~IndexIterator() = default;  // NOLINT
+INDEXITERATOR_TYPE::~IndexIterator() {
+    UnlatchAndUnPin();
+} // NOLINT
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::IsEnd() -> bool {
@@ -38,14 +40,15 @@ auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
     ++index_;
     if (index_ >= leaf_->GetSize()) {
         page_id_t next_page_id = leaf_->GetNextPageId();
+        UnlatchAndUnPin();
         if (next_page_id == INVALID_PAGE_ID) {
             leaf_ = nullptr;
             index_ = 0;
         }
         else {
             auto page = buffer_pool_manager_->FetchPage(next_page_id);
+            page->RLatch();
             leaf_ = reinterpret_cast<B_PLUS_TREE_LEAF_PAGE_TYPE *>(page->GetData());
-            buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
             index_ = 0;
         }
     }
