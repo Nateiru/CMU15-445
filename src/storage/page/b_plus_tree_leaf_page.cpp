@@ -210,7 +210,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveFirstToEndOf(BPlusTreeLeafPage *recipient,
                                                   BufferPoolManager *buffer_pool_manager) {
   assert(recipient->GetSize() + 1 <= recipient->GetMaxSize());
   assert(GetSize() >= 1);
-  recipient->array_[GetSize()] = MappingType{KeyAt(0), ValueAt(0)};
+  recipient->array_[recipient->GetSize()] = MappingType{KeyAt(0), ValueAt(0)};
   recipient->IncreaseSize(1);
   IncreaseSize(-1);
   for (int i = 0; i < GetSize(); i++) {

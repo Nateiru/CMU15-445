@@ -274,6 +274,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyFirstFrom(const MappingType &pair, int 
   array_[0] = pair;
   // update child parent page id
   auto child_page_id = pair.second;
+  // std::cout <<"child_page_id: " << child_page_id  << std::endl;
   auto page = buffer_pool_manager->FetchPage(child_page_id);
   assert(page != nullptr);
   auto child = reinterpret_cast<BPlusTreePage *>(page->GetData());

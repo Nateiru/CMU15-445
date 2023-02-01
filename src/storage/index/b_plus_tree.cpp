@@ -38,11 +38,7 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
     UnLockRoot(OpType::READ);
     return false;
   }
-  auto target_leaf_page = FindLeafPage(key, false, OpType::READ, transaction);
-  if (target_leaf_page == nullptr) {
-    UnlatchAndUnpin(OpType::READ, transaction);
-    return false;
-  }
+  auto target_leaf_page = FindLeafPage(key);
   // step 2. find value
   RID target_rid;
   bool exist = target_leaf_page->Lookup(key, target_rid, comparator_);
@@ -50,7 +46,11 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
     result->clear();
     result->push_back(target_rid);
   }
-  UnlatchAndUnpin(OpType::READ, transaction, 1); 
+  auto page = buffer_pool_manager_->FetchPage(target_leaf_page->GetPageId());
+  page->RUnlatch();
+  buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+  buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+  UnLockRoot(OpType::READ);
   return exist;
 }
 
@@ -236,23 +236,33 @@ auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool left_most,
     Page *next_page = buffer_pool_manager_->FetchPage(next_page_id);
     auto next_node = reinterpret_cast<BPlusTreePage *>(next_page);
     if (transaction == nullptr) {
-      buffer_pool_manager_->UnpinPage(node->GetPageId(), false);
+      if (op == OpType::READ) {
+        page->RUnlatch();
+        buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+        next_page->RLatch();
+      }else {
+        next_page->WLatch();
+        assert(transaction != nullptr);
+        if (node->IsSafe(op)) {
+          buffer_pool_manager_->UnpinPage(page->GetPageId(), false);
+          page->WUnlatch();
+        }
+      }
+    }
+    else { 
+      if (op == OpType::READ) {
+        next_page->RLatch();
+        UnlatchAndUnpin(op, transaction);
+      }else {
+        next_page->WLatch();
+        if (next_node->IsSafe(op)) {
+          UnlatchAndUnpin(op, transaction, true);
+        }
+      }
+      transaction->AddIntoPageSet(next_page);
     }
     page = next_page;
     node = next_node;
-    if (op == OpType::READ) {
-      page->RLatch();
-      UnlatchAndUnpin(op, transaction);
-    }else {
-      page->WLatch();
-      if (node->IsSafe(op)) {
-        // std::cout << "SAFE: " << root_page_id_<< std::endl;
-        UnlatchAndUnpin(op, transaction, true);
-      }
-    }
-    if (transaction != nullptr) {
-      transaction->AddIntoPageSet(page);
-    }
   }
   return reinterpret_cast<LeafPage *>(page->GetData());
 }
@@ -262,13 +272,22 @@ void BPLUSTREE_TYPE::UnlatchAndUnpin(enum OpType op,Transaction *transaction, bo
   if (transaction == nullptr) {
     return;
   }
-  
+  // if (op != OpType::READ) {
+  //   std::cout << "NOT READ!!!!" << std::endl;
+  // }
+  // std::cout << "size: " << transaction->GetPageSet()->size() << std::endl;
+  // std::cout << "page_list: ";
+  // for (auto page : *transaction->GetPageSet()) {
+  //   page_id_t page_id = page->GetPageId();
+  //   std::cout << page_id << ' ';
+  // }
+  // std :: cout << std::endl;
   for (auto page : *transaction->GetPageSet()) {
     page_id_t page_id = page->GetPageId();
     BPlusTreePage * node = reinterpret_cast<BPlusTreePage *> (page->GetData());
     
     if (op == OpType::READ) {
-      if (node->IsRootPage()) {
+      if (node->IsValidPage() && node->IsRootPage()) {
         UnLockRoot(op);
       }
       page->RUnlatch();
@@ -314,8 +333,8 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
   if (cur_size < leaf_page->GetMinSize()) {
     CoalesceOrRedistribute(leaf_page, transaction);
   }
-  // std::cout << "============Finish Delete: " << key << std::endl;
   UnlatchAndUnpin(OpType::DELETE, transaction, 1);
+  // std::cout << "============Finish Delete: " << key << std::endl;
   assert(Check());
 }
 /*
@@ -346,10 +365,8 @@ auto BPLUSTREE_TYPE::CoalesceOrRedistribute(N *node, Transaction *transaction) -
       std::swap(node, sibling_node);
     }
     int remove_index = parent_node->ValueIndex(node->GetPageId());
-    bool remove_success = Coalesce(sibling_node, node, parent_node, remove_index, transaction);
-    if (!remove_success) {
-      buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
-    }
+    Coalesce(sibling_node, node, parent_node, remove_index, transaction);
+    buffer_pool_manager_->UnpinPage(parent_node->GetPageId(), true);
     return true;
   }
   /* Redistribution: borrow an entry from N2 */
