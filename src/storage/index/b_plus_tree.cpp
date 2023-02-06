@@ -504,6 +504,10 @@ void BPLUSTREE_TYPE::Redistribute(N *neighbor_node, N *node, int index) {
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
   LockRoot(OpType::READ);
+  if (IsEmpty()) {
+    UnLockRoot(OpType::READ);
+    return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_);  
+  }
   auto start_leaf = FindLeafPage(KeyType(), true);
   UnLockRoot(OpType::READ);
   return INDEXITERATOR_TYPE(start_leaf, 0, buffer_pool_manager_);
@@ -517,6 +521,10 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
   LockRoot(OpType::READ);
+  if (IsEmpty()) {
+    UnLockRoot(OpType::READ);
+    return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_);  
+  }
   auto start_leaf = FindLeafPage(key);
   UnLockRoot(OpType::READ);
   if (start_leaf == nullptr) {

@@ -37,6 +37,24 @@ class IndexIterator {
 
   auto operator!=(const IndexIterator &itr) const -> bool { return ((leaf_ != itr.leaf_) || (index_ != itr.index_)); }
 
+  explicit IndexIterator(const IndexIterator &rhs) noexcept : 
+                      leaf_(rhs.leaf_), index_(rhs.index_), buffer_pool_manager_(rhs.buffer_pool_manager_){
+    if (leaf_->GetPageId() != INVALID_PAGE_ID) {
+      buffer_pool_manager_->FetchPage(leaf_->GetPageId())->RLatch();
+    }
+  }
+                
+  friend void swap(IndexIterator &a, IndexIterator &b) noexcept {
+    std::swap(a.leaf_, b.leaf_);
+    std::swap(a.index_, b.index_);
+    std::swap(a.buffer_pool_manager_, b.buffer_pool_manager_);
+  }
+
+  auto operator=(IndexIterator itr) noexcept -> IndexIterator & {
+    swap(*this, itr);
+    return *this;
+  }
+
  private:
   // add your own private member variables here
   void UnlatchAndUnPin() {
