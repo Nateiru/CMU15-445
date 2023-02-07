@@ -29,6 +29,8 @@ void AggregationExecutor::Init() {
   Tuple temp_tuple;
   RID temp_rid;
   child_->Init();
+  aht_.Clear();
+  used_ = false;
   while(child_->Next(&temp_tuple, &temp_rid)) {
     aht_.InsertCombine(MakeAggregateKey(&temp_tuple), MakeAggregateValue(&temp_tuple));
   }
@@ -47,6 +49,7 @@ auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   }
   while (aht_iterator_ != aht_.End()) {
     std::vector<Value> values;
+    values.reserve(aht_iterator_.Key().group_bys_.size() + aht_iterator_.Val().aggregates_.size());
     for (const auto & value : aht_iterator_.Key().group_bys_) {
       values.emplace_back(value);
     }

@@ -49,9 +49,9 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
 		// predicate检查所有的列比较合理
 		if (plan_->filter_predicate_ == nullptr || \
 				plan_->filter_predicate_->Evaluate(&temp_tuple, *output_schema).GetAs<bool>()) {
-			*tuple = temp_tuple;
-			*rid = original_rid;
-			return true;
+		*tuple = temp_tuple;
+		*rid = original_rid;
+		return true;
 		}
 	}
 	return false;

@@ -23,6 +23,7 @@ DeleteExecutor::DeleteExecutor(ExecutorContext *exec_ctx, const DeletePlanNode *
 void DeleteExecutor::Init() {
 	table_info_ = GetExecutorContext()->GetCatalog()->GetTable(plan_->TableOid());
 	table_indexes_ = GetExecutorContext()->GetCatalog()->GetTableIndexes(table_info_->name_);
+	used_ = false;
 	child_executor_->Init();
 }
 
