@@ -52,21 +52,9 @@ class SimpleAggregationHashTable {
           values.emplace_back(ValueFactory::GetIntegerValue(0));
           break;
         case AggregationType::CountAggregate:
-          values.emplace_back(ValueFactory::GetIntegerValue(0));
-          break;
         case AggregationType::SumAggregate:
-          // Sum starts at zero.
-          values.emplace_back(ValueFactory::GetIntegerValue(0));
-          break;
         case AggregationType::MinAggregate:
-          // Min starts at INT_MAX
-          values.emplace_back(ValueFactory::GetIntegerValue(BUSTUB_INT32_MAX));
-          break;
         case AggregationType::MaxAggregate:
-          // Max starts at INT_MIN
-          values.emplace_back(ValueFactory::GetIntegerValue(BUSTUB_INT32_MAX));
-          break;
-        default:
           // Others starts at null.
           values.emplace_back(ValueFactory::GetNullValueByType(TypeId::INTEGER));
           break;
@@ -84,8 +72,27 @@ class SimpleAggregationHashTable {
    */
   void CombineAggregateValues(AggregateValue *result, const AggregateValue &input) {
     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
-      switch (agg_types_[i]) {
+      if (input.aggregates_[i].IsNull()) {
+        continue;
+      }
+      // 初值是空
+      if (result->aggregates_[i].IsNull()) {
+        switch (agg_types_[i]) {
         case AggregationType::CountStarAggregate:
+        case AggregationType::CountAggregate:
+          result->aggregates_[i] = ValueFactory::GetIntegerValue(1);
+          break;
+        case AggregationType::SumAggregate:
+        case AggregationType::MinAggregate:
+        case AggregationType::MaxAggregate:
+          result->aggregates_[i] = input.aggregates_[i];
+          break;
+        }
+        continue;
+      }
+      // 初值不是空计算
+      switch (agg_types_[i]) {
+        case AggregationType::CountStarAggregate: // Count * from table
           result->aggregates_[i] = result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));
           break;
         case AggregationType::CountAggregate:
@@ -99,6 +106,8 @@ class SimpleAggregationHashTable {
           break;
         case AggregationType::MaxAggregate:
           result->aggregates_[i] = result->aggregates_[i].Max(input.aggregates_[i]);
+          break;
+        default:
           break;
       }
     }
@@ -155,6 +164,10 @@ class SimpleAggregationHashTable {
 
   /** @return Iterator to the end of the hash table */
   auto End() -> Iterator { return Iterator{ht_.cend()}; }
+  
+  auto IsEmpty() -> bool {
+    return ht_.empty();
+  }
 
  private:
   /** The hash table is just a map from aggregate keys to aggregate values */
@@ -227,5 +240,7 @@ class AggregationExecutor : public AbstractExecutor {
   /** Simple aggregation hash table iterator */
   // TODO(Student): Uncomment SimpleAggregationHashTable::Iterator aht_iterator_;
   SimpleAggregationHashTable::Iterator aht_iterator_;
+
+  bool used_{false};
 };
 }  // namespace bustub

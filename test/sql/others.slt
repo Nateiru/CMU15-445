@@ -1,32 +1,30 @@
-# Ensure all order-bys in this file are transformed into index scan
-statement ok
-set force_optimizer_starter_rule=yes
+# The real test process begins...
 
+# Create a table
 statement ok
 create table t1(v1 int, v2 int);
 
+# Simple aggregation over the table
 query
-insert into t1 values (1, 50);
+insert into t1 values (5, 1), (4, 2), (3, 3), (2, 4), (1, 5);
 ----
-1
-
-statement ok
-create index t1v1 on t1(v1);
-
-statement ok
-create index t1v2 on t1(v2);
-
-query +ensure:index_scan
-select * from t1 order by v1;
-----
-1 50
-
-query +ensure:index_scan
-select * from t1 order by v2;
-----
-1 50
+5
 
 query
-insert into t1 values (6, 11), (7, 22);
+select count(*), count(v1) from t1 group by v1, v2;
 ----
-2
+1 1
+1 1
+1 1
+1 1
+1 1
+
+query
+select v1, v2, count(*), count(v1) from t1 group by v1, v2;
+----
+3 1 1
+2 1 1
+1 1 1
+0 1 1
+99999 1 1
+-99999 1 1

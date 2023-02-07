@@ -19,6 +19,7 @@ namespace bustub {
 AggregationExecutor::AggregationExecutor(ExecutorContext *exec_ctx, const AggregationPlanNode *plan,
                                          std::unique_ptr<AbstractExecutor> &&child)
     : AbstractExecutor(exec_ctx),
+      plan_(plan),
       child_(std::move(child)),
       aht_{plan->GetAggregates(), plan->GetAggregateTypes()},
       aht_iterator_(aht_.Begin()){}
@@ -35,6 +36,15 @@ void AggregationExecutor::Init() {
 }
 
 auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  
+  if (aht_.IsEmpty() && !used_) {
+    used_ = true;
+    if (!plan_->group_bys_.empty()) {
+      return false;
+    }
+    *tuple = Tuple(std::move(aht_.GenerateInitialAggregateValue().aggregates_), &GetOutputSchema());
+    return true;
+  }
   while (aht_iterator_ != aht_.End()) {
     std::vector<Value> values;
     for (const auto & value : aht_iterator_.Key().group_bys_) {
@@ -43,7 +53,8 @@ auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     for (const auto & value : aht_iterator_.Val().aggregates_) {
       values.emplace_back(value);
     }
-    *tuple = Tuple(std::move(values), &plan_->OutputSchema());
+
+    *tuple = Tuple(std::move(values), &GetOutputSchema());
     ++aht_iterator_;
     return true;
   }
