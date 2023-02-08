@@ -36,6 +36,51 @@
 #include <ctime>
 #include <string>
 
+/**
+ * ----------- log ----------- 南京大学PA实验 方便调试
+ * "\033[字背景颜色;字体颜色m字符串\033[0m"
+ * \33[0m 关闭所有属性
+ * \33[1m 设置高亮度
+ * \33[4m 下划线
+ * \33[5m 闪烁
+ * \33[7m 反显
+ * \33[8m 消隐
+ * \33[30m -- \33[37m 设置前景色
+ * \33[40m -- \33[47m 设置背景色
+ * \33[nA 光标上移n行
+ * \33[nB 光标下移n行
+ * \33[nC 光标右移n行
+ * \33[nD 光标左移n行
+ * \33[y;xH设置光标位置
+ * \33[2J 清屏
+ * \33[K 清除从光标到行尾的内容
+ * \33[s 保存光标位置
+ * \33[u 恢复光标位置
+ * \33[?25l 隐藏光标
+ * \33[?25h 显示光标
+ */
+
+
+#define ASNI_FG_BLACK   "\33[1;30m"
+#define ASNI_FG_RED     "\33[1;31m"
+#define ASNI_FG_GREEN   "\33[1;32m"
+#define ASNI_FG_YELLOW  "\33[1;33m"
+#define ASNI_FG_BLUE    "\33[1;34m"
+#define ASNI_FG_MAGENTA "\33[1;35m"
+#define ASNI_FG_CYAN    "\33[1;36m"
+#define ASNI_FG_WHITE   "\33[1;37m"
+#define ASNI_BG_BLACK   "\33[1;40m"
+#define ASNI_BG_RED     "\33[1;41m"
+#define ASNI_BG_GREEN   "\33[1;42m"
+#define ASNI_BG_YELLOW  "\33[1;43m"
+#define ASNI_BG_BLUE    "\33[1;44m"
+#define ASNI_BG_MAGENTA "\33[1;35m"
+#define ASNI_BG_CYAN    "\33[1;46m"
+#define ASNI_BG_WHITE   "\33[1;47m"
+#define ASNI_NONE       "\33[0m"
+
+#define ASNI_FMT(str, fmt) fmt str ASNI_NONE
+
 namespace bustub {
 
 // https://blog.galowicz.de/2016/02/20/short_file_macro/
@@ -113,10 +158,10 @@ void OutputLogHeader(const char *file, int line, const char *func, int level);
 #if LOG_LEVEL <= LOG_LEVEL_WARN
 #define LOG_WARN_ENABLED
 // #pragma message("LOG_WARN was enabled.")
-#define LOG_WARN(...)                                                      \
-  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_WARN); \
-  ::fprintf(LOG_OUTPUT_STREAM, __VA_ARGS__);                               \
-  fprintf(LOG_OUTPUT_STREAM, "\n");                                        \
+#define LOG_WARN(format, ...)                                                      \
+  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_WARN);         \
+  ::fprintf(LOG_OUTPUT_STREAM, ASNI_FMT(format, ASNI_FG_RED), ##__VA_ARGS__);      \
+  fprintf(LOG_OUTPUT_STREAM, "\n");                                                \
   ::fflush(stdout)
 #else
 #define LOG_WARN(...) ((void)0)
@@ -128,10 +173,10 @@ void OutputLogHeader(const char *file, int line, const char *func, int level);
 #if LOG_LEVEL <= LOG_LEVEL_INFO
 #define LOG_INFO_ENABLED
 // #pragma message("LOG_INFO was enabled.")
-#define LOG_INFO(...)                                                      \
-  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_INFO); \
-  ::fprintf(LOG_OUTPUT_STREAM, __VA_ARGS__);                               \
-  fprintf(LOG_OUTPUT_STREAM, "\n");                                        \
+#define LOG_INFO(format, ...)                                                      \
+  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_INFO);         \
+  ::fprintf(LOG_OUTPUT_STREAM, ASNI_FMT(format, ASNI_FG_GREEN), ##__VA_ARGS__);    \
+  fprintf(LOG_OUTPUT_STREAM, "\n");                                                \
   ::fflush(stdout)
 #else
 #define LOG_INFO(...) ((void)0)
@@ -195,7 +240,7 @@ inline void OutputLogHeader(const char *file, int line, const char *func, int le
       type = "UNKWN";
   }
   // PAVLO: DO NOT CHANGE THIS
-  ::fprintf(LOG_OUTPUT_STREAM, "%s [%s:%d:%s] %s - ", time_str, file, line, func, type);
+  ::fprintf(LOG_OUTPUT_STREAM, ASNI_FMT("%s [%s:%d:%s] %s - ", ASNI_FG_BLUE), time_str, file, line, func, type);
 }
 
 }  // namespace bustub
