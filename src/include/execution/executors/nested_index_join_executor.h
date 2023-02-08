@@ -47,7 +47,7 @@ class NestIndexJoinExecutor : public AbstractExecutor {
 
   auto Next(Tuple *tuple, RID *rid) -> bool override;
 
-  auto GetValuesFromTuple(const Tuple *tuple, const Schema *output_schema) -> std::vector<Value>; 
+  auto GetValuesFromTuple(const Tuple *tuple, const Schema *output_schema) -> std::vector<Value>;
 
  private:
   /** The nested index join plan node. */
@@ -55,7 +55,7 @@ class NestIndexJoinExecutor : public AbstractExecutor {
   /** The child executor */
   std::unique_ptr<AbstractExecutor> child_executor_;
   /** BPlusTree Index */
-  BPlusTreeIndexForOneIntegerColumn* b_plus_tree_index_{nullptr}; 
+  BPlusTreeIndexForOneIntegerColumn *b_plus_tree_index_{nullptr};
   TableHeap *table_heap_{nullptr};
   /** A vector to store index scan result */
   std::vector<RID> right_rids_;

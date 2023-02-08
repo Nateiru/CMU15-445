@@ -78,26 +78,24 @@ class SimpleAggregationHashTable {
       // 初值是空
       if (result->aggregates_[i].IsNull()) {
         switch (agg_types_[i]) {
-        case AggregationType::CountStarAggregate:
-        case AggregationType::CountAggregate:
-          result->aggregates_[i] = ValueFactory::GetIntegerValue(1);
-          break;
-        case AggregationType::SumAggregate:
-        case AggregationType::MinAggregate:
-        case AggregationType::MaxAggregate:
-          result->aggregates_[i] = input.aggregates_[i];
-          break;
+          case AggregationType::CountStarAggregate:
+          case AggregationType::CountAggregate:
+            result->aggregates_[i] = ValueFactory::GetIntegerValue(1);
+            break;
+          case AggregationType::SumAggregate:
+          case AggregationType::MinAggregate:
+          case AggregationType::MaxAggregate:
+            result->aggregates_[i] = input.aggregates_[i];
+            break;
         }
         continue;
       }
       // 初值不是空计算
       switch (agg_types_[i]) {
-        case AggregationType::CountStarAggregate: // Count * from table
-          result->aggregates_[i] = result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));
-          break;
+        case AggregationType::CountStarAggregate:  // Count * from table
         case AggregationType::CountAggregate:
           result->aggregates_[i] = result->aggregates_[i].Add(ValueFactory::GetIntegerValue(1));
-          break; 
+          break;
         case AggregationType::SumAggregate:
           result->aggregates_[i] = result->aggregates_[i].Add(input.aggregates_[i]);
           break;
@@ -164,10 +162,8 @@ class SimpleAggregationHashTable {
 
   /** @return Iterator to the end of the hash table */
   auto End() -> Iterator { return Iterator{ht_.cend()}; }
-  
-  auto IsEmpty() -> bool {
-    return ht_.empty();
-  }
+
+  auto IsEmpty() -> bool { return ht_.empty(); }
 
  private:
   /** The hash table is just a map from aggregate keys to aggregate values */

@@ -60,24 +60,23 @@
  * \33[?25h 显示光标
  */
 
-
-#define ASNI_FG_BLACK   "\33[1;30m"
-#define ASNI_FG_RED     "\33[1;31m"
-#define ASNI_FG_GREEN   "\33[1;32m"
-#define ASNI_FG_YELLOW  "\33[1;33m"
-#define ASNI_FG_BLUE    "\33[1;34m"
+#define ASNI_FG_BLACK "\33[1;30m"
+#define ASNI_FG_RED "\33[1;31m"
+#define ASNI_FG_GREEN "\33[1;32m"
+#define ASNI_FG_YELLOW "\33[1;33m"
+#define ASNI_FG_BLUE "\33[1;34m"
 #define ASNI_FG_MAGENTA "\33[1;35m"
-#define ASNI_FG_CYAN    "\33[1;36m"
-#define ASNI_FG_WHITE   "\33[1;37m"
-#define ASNI_BG_BLACK   "\33[1;40m"
-#define ASNI_BG_RED     "\33[1;41m"
-#define ASNI_BG_GREEN   "\33[1;42m"
-#define ASNI_BG_YELLOW  "\33[1;43m"
-#define ASNI_BG_BLUE    "\33[1;44m"
+#define ASNI_FG_CYAN "\33[1;36m"
+#define ASNI_FG_WHITE "\33[1;37m"
+#define ASNI_BG_BLACK "\33[1;40m"
+#define ASNI_BG_RED "\33[1;41m"
+#define ASNI_BG_GREEN "\33[1;42m"
+#define ASNI_BG_YELLOW "\33[1;43m"
+#define ASNI_BG_BLUE "\33[1;44m"
 #define ASNI_BG_MAGENTA "\33[1;35m"
-#define ASNI_BG_CYAN    "\33[1;46m"
-#define ASNI_BG_WHITE   "\33[1;47m"
-#define ASNI_NONE       "\33[0m"
+#define ASNI_BG_CYAN "\33[1;46m"
+#define ASNI_BG_WHITE "\33[1;47m"
+#define ASNI_NONE "\33[0m"
 
 #define ASNI_FMT(str, fmt) fmt str ASNI_NONE
 
@@ -158,10 +157,10 @@ void OutputLogHeader(const char *file, int line, const char *func, int level);
 #if LOG_LEVEL <= LOG_LEVEL_WARN
 #define LOG_WARN_ENABLED
 // #pragma message("LOG_WARN was enabled.")
-#define LOG_WARN(format, ...)                                                      \
-  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_WARN);         \
-  ::fprintf(LOG_OUTPUT_STREAM, ASNI_FMT(format, ASNI_FG_RED), ##__VA_ARGS__);      \
-  fprintf(LOG_OUTPUT_STREAM, "\n");                                                \
+#define LOG_WARN(format, ...)                                                 \
+  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_WARN);    \
+  ::fprintf(LOG_OUTPUT_STREAM, ASNI_FMT(format, ASNI_FG_RED), ##__VA_ARGS__); \
+  fprintf(LOG_OUTPUT_STREAM, "\n");                                           \
   ::fflush(stdout)
 #else
 #define LOG_WARN(...) ((void)0)
@@ -173,10 +172,10 @@ void OutputLogHeader(const char *file, int line, const char *func, int level);
 #if LOG_LEVEL <= LOG_LEVEL_INFO
 #define LOG_INFO_ENABLED
 // #pragma message("LOG_INFO was enabled.")
-#define LOG_INFO(format, ...)                                                      \
-  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_INFO);         \
-  ::fprintf(LOG_OUTPUT_STREAM, ASNI_FMT(format, ASNI_FG_GREEN), ##__VA_ARGS__);    \
-  fprintf(LOG_OUTPUT_STREAM, "\n");                                                \
+#define LOG_INFO(format, ...)                                                   \
+  OutputLogHeader(__SHORT_FILE__, __LINE__, __FUNCTION__, LOG_LEVEL_INFO);      \
+  ::fprintf(LOG_OUTPUT_STREAM, ASNI_FMT(format, ASNI_FG_GREEN), ##__VA_ARGS__); \
+  fprintf(LOG_OUTPUT_STREAM, "\n");                                             \
   ::fflush(stdout)
 #else
 #define LOG_INFO(...) ((void)0)

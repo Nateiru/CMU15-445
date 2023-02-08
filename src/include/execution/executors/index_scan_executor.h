@@ -35,7 +35,7 @@ class IndexScanExecutor : public AbstractExecutor {
    */
   IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanPlanNode *plan);
 
-  auto GetValuesFromTuple(const Tuple *tuple, const Schema *out_schema) -> std::vector<Value>;
+  auto GetValuesFromTuple(const Tuple *tuple, const Schema *output_schema) -> std::vector<Value>;
 
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); }
 
@@ -46,7 +46,7 @@ class IndexScanExecutor : public AbstractExecutor {
  private:
   /** The index scan plan node to be executed. */
   const IndexScanPlanNode *plan_;
-  BPlusTreeIndexIteratorForOneIntegerColumn iter_; 
+  BPlusTreeIndexIteratorForOneIntegerColumn iter_;
   BPlusTreeIndexIteratorForOneIntegerColumn iter_end_;
   TableHeap *table_heap_{nullptr};
 };

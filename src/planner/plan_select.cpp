@@ -32,7 +32,6 @@
 
 namespace bustub {
 
-
 auto Planner::PlanSelect(const SelectStatement &statement) -> AbstractPlanNodeRef {
   auto ctx_guard = NewContext();
   if (!statement.ctes_.empty()) {

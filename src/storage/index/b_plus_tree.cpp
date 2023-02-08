@@ -506,7 +506,7 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
   LockRoot(OpType::READ);
   if (IsEmpty()) {
     UnLockRoot(OpType::READ);
-    return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_);  
+    return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_);
   }
   auto start_leaf = FindLeafPage(KeyType(), true);
   UnLockRoot(OpType::READ);
@@ -523,7 +523,7 @@ auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
   LockRoot(OpType::READ);
   if (IsEmpty()) {
     UnLockRoot(OpType::READ);
-    return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_);  
+    return INDEXITERATOR_TYPE(nullptr, 0, buffer_pool_manager_);
   }
   auto start_leaf = FindLeafPage(key);
   UnLockRoot(OpType::READ);

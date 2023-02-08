@@ -35,7 +35,7 @@ class SeqScanExecutor : public AbstractExecutor {
 
   /** Initialize the sequential scan */
   void Init() override;
-  auto GetValuesFromTuple(const Tuple *tuple, const Schema *out_schema) -> std::vector<Value>;
+  auto GetValuesFromTuple(const Tuple *tuple, const Schema *output_schema) -> std::vector<Value>;
   /**
    * Yield the next tuple from the sequential scan.
    * @param[out] tuple The next tuple produced by the scan
@@ -50,7 +50,7 @@ class SeqScanExecutor : public AbstractExecutor {
  private:
   /** The sequential scan plan node to be executed */
   const SeqScanPlanNode *plan_;
-  TableIterator table_iter_{nullptr, RID(), nullptr}; 
+  TableIterator table_iter_{nullptr, RID(), nullptr};
   TableHeap *table_heap_{nullptr};
 };
 }  // namespace bustub

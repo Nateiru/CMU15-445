@@ -1,28 +1,14 @@
-statement ok
-create table t1(v1 int);
-
-statement ok
-create table t2(v1 int, v2 int);
-
-statement ok
-insert into t1 (select * from __mock_table_123);
-
-statement ok
-insert into t2 (select * from test_simple_seq_2);
-
-statement ok
-create index t1_v1 on t1(v1);
-
-query rowsort
-select * from t2 inner join t1 on t1.v1 = t2.v2;
+query
+select * from  __mock_table_tas_2022 order by office_hour, github_id;
 ----
-0 10 integer_null
-1 11 1
-2 12 2
-3 13 3
-4 14 integer_null
-5 15 integer_null
-6 16 integer_null
-7 17 integer_null
-8 18 integer_null
-9 19 integer_null
+lmwnshn Friday
+joyceliaoo Monday
+timlee0119 Monday
+skyzh Randomly
+kush789 Thursday
+amstqq Tuesday
+thepinetree Tuesday
+yliang412 Tuesday
+durovo Wednesday
+karthik-ramanathan-3006 Wednesday
+mkpjnx Wednesday

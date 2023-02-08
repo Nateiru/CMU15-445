@@ -19,6 +19,7 @@
 
 #include "catalog/schema.h"
 #include "common/exception.h"
+#include "common/logger.h"
 #include "common/macros.h"
 #include "execution/expressions/abstract_expression.h"
 #include "fmt/format.h"
@@ -45,6 +46,7 @@ class ArithmeticExpression : public AbstractExpression {
   }
 
   auto Evaluate(const Tuple *tuple, const Schema &schema) const -> Value override {
+    // LOG_INFO("++++++++++++++++++++++++++++++");
     Value lhs = GetChildAt(0)->Evaluate(tuple, schema);
     Value rhs = GetChildAt(1)->Evaluate(tuple, schema);
     auto res = PerformComputation(lhs, rhs);

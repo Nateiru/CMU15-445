@@ -26,7 +26,7 @@ void IndexScanExecutor::Init() {
 // 可能是 Projection操作
 auto IndexScanExecutor::GetValuesFromTuple(const Tuple *tuple, const Schema *output_schema) -> std::vector<Value> {
   std::vector<Value> ret;
-	ret.reserve(output_schema->GetColumnCount());
+  ret.reserve(output_schema->GetColumnCount());
   for (const Column &col : output_schema->GetColumns()) {
     Value val = tuple->GetValue(output_schema, output_schema->GetColIdx(col.GetName()));
     ret.push_back(val);
@@ -35,13 +35,13 @@ auto IndexScanExecutor::GetValuesFromTuple(const Tuple *tuple, const Schema *out
 }
 auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   while (iter_ != iter_end_) {
-		*rid = (*iter_).second;
-		const Schema *output_schema = &(plan_->OutputSchema());
+    *rid = (*iter_).second;
+    const Schema *output_schema = &(plan_->OutputSchema());
     table_heap_->GetTuple(*rid, tuple, GetExecutorContext()->GetTransaction());
 
-		auto values = GetValuesFromTuple(tuple, output_schema);
-		++iter_;
-    *tuple = std::move(Tuple(std::move(values), output_schema));
+    auto values = GetValuesFromTuple(tuple, output_schema);
+    ++iter_;
+    *tuple = Tuple(std::move(values), output_schema);
     return true;
   }
   return false;

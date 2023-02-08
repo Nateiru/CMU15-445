@@ -14,6 +14,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
@@ -52,7 +53,7 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
   /** @return The output schema for the insert */
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); };
 
-  auto GetValuesFromTuple(const Tuple *tuple, const Schema *output_schema) -> std::vector<Value>; 
+  auto GetValuesFromTuple(const Tuple *tuple, const Schema *output_schema) -> std::vector<Value>;
 
  private:
   /** The NestedLoopJoin plan node to be executed. */

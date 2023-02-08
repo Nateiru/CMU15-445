@@ -22,23 +22,21 @@ AggregationExecutor::AggregationExecutor(ExecutorContext *exec_ctx, const Aggreg
       plan_(plan),
       child_(std::move(child)),
       aht_{plan->GetAggregates(), plan->GetAggregateTypes()},
-      aht_iterator_(aht_.Begin()){}
+      aht_iterator_(aht_.Begin()) {}
 
 void AggregationExecutor::Init() {
-
   Tuple temp_tuple;
   RID temp_rid;
   child_->Init();
   aht_.Clear();
   used_ = false;
-  while(child_->Next(&temp_tuple, &temp_rid)) {
+  while (child_->Next(&temp_tuple, &temp_rid)) {
     aht_.InsertCombine(MakeAggregateKey(&temp_tuple), MakeAggregateValue(&temp_tuple));
   }
   aht_iterator_ = aht_.Begin();
 }
 
 auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
-  
   if (aht_.IsEmpty() && !used_) {
     used_ = true;
     if (!plan_->group_bys_.empty()) {
@@ -50,10 +48,10 @@ auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   while (aht_iterator_ != aht_.End()) {
     std::vector<Value> values;
     values.reserve(aht_iterator_.Key().group_bys_.size() + aht_iterator_.Val().aggregates_.size());
-    for (const auto & value : aht_iterator_.Key().group_bys_) {
+    for (const auto &value : aht_iterator_.Key().group_bys_) {
       values.emplace_back(value);
     }
-    for (const auto & value : aht_iterator_.Val().aggregates_) {
+    for (const auto &value : aht_iterator_.Val().aggregates_) {
       values.emplace_back(value);
     }
 
