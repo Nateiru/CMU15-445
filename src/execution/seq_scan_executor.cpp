@@ -46,13 +46,13 @@ auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
 		// plan 中的 out_schema 可能仅仅是 TableHeapIterator 返回的 Tuple 的一个 projection (或者说返回 Tuple 的某些列)
 		Tuple temp_tuple(std::move(values), output_schema);
 
-		// predicate检查所有的列比较合理
-		if (plan_->filter_predicate_ == nullptr || \
-				plan_->filter_predicate_->Evaluate(&temp_tuple, *output_schema).GetAs<bool>()) {
+		// // predicate检查所有的列比较合理
+		// if (plan_->filter_predicate_ == nullptr || 
+		// 		plan_->filter_predicate_->Evaluate(&temp_tuple, *output_schema).GetAs<bool>()) {
 		*tuple = temp_tuple;
 		*rid = original_rid;
 		return true;
-		}
+		// }
 	}
 	return false;
 }
