@@ -14,13 +14,92 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/hash_join_plan.h"
 #include "storage/table/tuple.h"
+#include "common/util/hash_util.h"
+
 
 namespace bustub {
+struct HashJoinKey {
+  Value value_;
+  auto operator==(const HashJoinKey &other) const -> bool {
+    return (value_.CompareEquals(other.value_) == CmpBool::CmpTrue);
+  }
+};
+
+struct HashJoinValue {
+  std::vector<Tuple> tuples_;
+};
+}   // namespace bustub
+
+namespace std{
+  
+/** Implements std::hash on HashJoinKey */
+template <>
+struct hash<bustub::HashJoinKey> {
+  auto operator()(const bustub::HashJoinKey &hash_join_key) const -> std::size_t {
+    size_t curr_hash = 0;
+    if (!hash_join_key.value_.IsNull()) {
+      curr_hash = bustub::HashUtil::CombineHashes(curr_hash, bustub::HashUtil::HashValue(&hash_join_key.value_));
+    }
+    return curr_hash;
+  }
+};
+
+}  // namespace std
+
+namespace bustub {
+
+/**
+ * A simplified hash table that has all the necessary functionality for hashjoin.
+ */
+
+class SimpleHashJoinHashTable {
+ public:
+  /**
+   * Inserts a value into the hash table
+   */
+  void Insert(const Value &value, const Tuple &tuple) {
+    HashJoinKey hash_join_key{value};
+    if (ht_.count(hash_join_key) == 0) {
+      ht_.insert({hash_join_key, HashJoinValue()});
+    }
+    ht_[hash_join_key].tuples_.emplace_back(tuple);
+  }
+  /**
+   * clear the hash table
+   */
+  void Clear() {
+    ht_.clear();
+  }
+  /**
+   * count the hash table in hash_join_key
+   */
+  auto Count(const Value &value) -> size_t {
+    HashJoinKey hash_join_key{value};
+    if (ht_.count(hash_join_key) == 0) {
+      return 0;
+    }
+    return ht_[hash_join_key].tuples_.size();
+  }
+  /**
+   * Pop Back the hash table in hash_join_key 
+   */
+  auto Pop(const Value &value) -> Tuple {
+    HashJoinKey hash_join_key{value};
+    Tuple ret = ht_[hash_join_key].tuples_.back();
+    ht_[hash_join_key].tuples_.pop_back();
+    return ret;
+  }
+
+ private:
+  /** The hash table is values */
+  std::unordered_map<HashJoinKey, HashJoinValue> ht_{};
+};
 
 /**
  * HashJoinExecutor executes a nested-loop JOIN on two tables.
@@ -51,9 +130,15 @@ class HashJoinExecutor : public AbstractExecutor {
   /** @return The output schema for the join */
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); };
 
+  auto GetValuesFromTuple(const Tuple *tuple, const Schema *output_schema) -> std::vector<Value>;
+
  private:
   /** The NestedLoopJoin plan node to be executed. */
   const HashJoinPlanNode *plan_;
+  std::unique_ptr<AbstractExecutor> left_child_;
+  std::unique_ptr<AbstractExecutor> right_child_;
+  SimpleHashJoinHashTable hht_;
+  Value hash_key_;
 };
 
 }  // namespace bustub

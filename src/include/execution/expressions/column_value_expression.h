@@ -19,6 +19,7 @@
 #include "catalog/schema.h"
 #include "execution/expressions/abstract_expression.h"
 #include "storage/table/tuple.h"
+#include "common/logger.h"
 
 namespace bustub {
 /**
@@ -41,6 +42,7 @@ class ColumnValueExpression : public AbstractExpression {
 
   auto EvaluateJoin(const Tuple *left_tuple, const Schema &left_schema, const Tuple *right_tuple,
                     const Schema &right_schema) const -> Value override {
+    // LOG_INFO("Tuple Index: %d\n", tuple_idx_);
     return tuple_idx_ == 0 ? left_tuple->GetValue(&left_schema, col_idx_)
                            : right_tuple->GetValue(&right_schema, col_idx_);
   }

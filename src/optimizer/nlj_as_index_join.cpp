@@ -6,6 +6,7 @@
 #include "catalog/schema.h"
 #include "common/exception.h"
 #include "common/macros.h"
+#include "common/logger.h"
 #include "execution/expressions/column_value_expression.h"
 #include "execution/expressions/comparison_expression.h"
 #include "execution/expressions/constant_value_expression.h"
@@ -71,9 +72,11 @@ auto Optimizer::OptimizeNLJAsIndexJoin(const AbstractPlanNodeRef &plan) -> Abstr
                 }
               }
               if (left_expr->GetTupleIdx() == 1 && right_expr->GetTupleIdx() == 0) {
+                LOG_INFO("Opps!!!!\n");
                 if (auto index = MatchIndex(right_seq_scan.table_name_, left_expr->GetColIdx());
                     index != std::nullopt) {
                   auto [index_oid, index_name] = *index;
+                  LOG_INFO("Here!!!!\n");
                   return std::make_shared<NestedIndexJoinPlanNode>(
                       nlj_plan.output_schema_, nlj_plan.GetLeftPlan(), std::move(right_expr_tuple_0),
                       right_seq_scan.GetTableOid(), index_oid, std::move(index_name), right_seq_scan.table_name_,
