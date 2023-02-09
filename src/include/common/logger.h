@@ -35,6 +35,7 @@
 
 #include <ctime>
 #include <string>
+#include <string.h>
 
 /**
  * ----------- log ----------- 南京大学PA实验 方便调试
@@ -79,6 +80,9 @@
 #define ASNI_NONE "\33[0m"
 
 #define ASNI_FMT(str, fmt) fmt str ASNI_NONE
+
+
+
 
 namespace bustub {
 
@@ -239,7 +243,13 @@ inline void OutputLogHeader(const char *file, int line, const char *func, int le
       type = "UNKWN";
   }
   // PAVLO: DO NOT CHANGE THIS
-  ::fprintf(LOG_OUTPUT_STREAM, ASNI_FMT("%s [%s:%d:%s] %s - ", ASNI_FG_BLUE), time_str, file, line, func, type);
+  // ::fprintf(LOG_OUTPUT_STREAM, ASNI_FMT("%s [%s:%d:%s] %s - ", ASNI_FG_BLUE), time_str, file, line, func, type);
+  /**
+   * 显示上个文件的名称（不包含路径）
+   */
+  #define __FILENAME__ (strrchr(file, '/') ? strrchr(file, '/') + 1 : file)
+ 
+  ::fprintf(LOG_OUTPUT_STREAM, ASNI_FMT("[%s:%d: %s] %s - ", ASNI_FG_BLUE), __FILENAME__, line, func, type);
 }
 
 }  // namespace bustub
