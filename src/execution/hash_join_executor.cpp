@@ -35,6 +35,7 @@ void HashJoinExecutor::Init() {
   hht_.Clear();
   Value hash_key;
   std::vector<Tuple>().swap(ret_tuples_);
+  bool reordered = GetOutputSchema().GetColumn(0).GetName() == right_child_->GetOutputSchema().GetColumn(0).GetName();
 
   Tuple tuple;
   RID rid;
@@ -56,12 +57,21 @@ void HashJoinExecutor::Init() {
     auto right_values = GetValuesFromTuple(&tuple, &right_child_->GetOutputSchema());
     for (const auto & left_tuple : left_tuples) {
       auto left_values = GetValuesFromTuple(&left_tuple, &left_child_->GetOutputSchema()); 
-      left_values.insert(left_values.end(), right_values.begin(), right_values.end());
-      ret_tuples_.emplace_back(Tuple(left_values, &GetOutputSchema()));
+      if (reordered) {
+        assert(plan_->GetJoinType() == JoinType::INNER);
+        size_t right_size = right_values.size();
+        right_values.insert(right_values.end(), left_values.begin(), left_values.end());
+        ret_tuples_.emplace_back(Tuple(right_values, &GetOutputSchema()));
+        right_values.erase(right_values.begin() + right_size, right_values.end());
+      }else {
+        left_values.insert(left_values.end(), right_values.begin(), right_values.end());
+        ret_tuples_.emplace_back(Tuple(left_values, &GetOutputSchema()));
+      }
     }
   }
   // LeftJoin: Unmatched
   if (plan_->GetJoinType() == JoinType::LEFT) {
+    assert(!reordered);
     auto left_tuples = hht_.UnMatched();
     if (left_tuples.empty()) {
       return;
