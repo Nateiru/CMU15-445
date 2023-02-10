@@ -32,6 +32,9 @@ struct HashJoinKey {
 };
 
 struct HashJoinValue {
+  HashJoinValue () {
+    std::vector<Tuple>().swap(tuples_);
+  }
   std::vector<Tuple> tuples_;
 };
 }   // namespace bustub
@@ -75,6 +78,7 @@ class SimpleHashJoinHashTable {
    */
   void Clear() {
     ht_.clear();
+    matched_.clear();
   }
   /**
    * count the hash table in hash_join_key
@@ -87,18 +91,35 @@ class SimpleHashJoinHashTable {
     return ht_[hash_join_key].tuples_.size();
   }
   /**
-   * Pop Back the hash table in hash_join_key 
+   * Scan the hash table in hash_join_key 
    */
-  auto Pop(const Value &value) -> Tuple {
+  auto Scan(const Value &value) -> std::vector<Tuple> {
     HashJoinKey hash_join_key{value};
-    Tuple ret = ht_[hash_join_key].tuples_.back();
-    ht_[hash_join_key].tuples_.pop_back();
+    std::vector<Tuple> ret;
+    ret.reserve(ht_[hash_join_key].tuples_.size());
+    for (auto it : ht_[hash_join_key].tuples_) {
+      ret.emplace_back(it);
+    }
+    matched_[hash_join_key] = true;
+    return ret;
+  }
+  /**
+   * Unmatched the hash table in hash_join_key 
+   */
+  auto UnMatched() -> std::vector<Tuple> {
+    std::vector<Tuple> ret;
+    for (const auto &it : ht_) {
+      if (!matched_.count(it.first)) {
+        ret.insert(ret.begin(), it.second.tuples_.begin(), it.second.tuples_.end());
+      }
+    }
     return ret;
   }
 
  private:
   /** The hash table is values */
   std::unordered_map<HashJoinKey, HashJoinValue> ht_{};
+  std::unordered_map<HashJoinKey, bool> matched_{};
 };
 
 /**
@@ -138,7 +159,7 @@ class HashJoinExecutor : public AbstractExecutor {
   std::unique_ptr<AbstractExecutor> left_child_;
   std::unique_ptr<AbstractExecutor> right_child_;
   SimpleHashJoinHashTable hht_;
-  Value hash_key_;
+  std::vector<Tuple> ret_tuples_;
 };
 
 }  // namespace bustub

@@ -3,6 +3,12 @@
 # Show office hours on lecture days
 # "rowsort" means that the order of result doesn't matter.
 
+statement ok
+EXPLAIN select * from
+    __mock_table_tas_2022 inner join __mock_table_schedule_2022
+    on office_hour = day_of_week
+    where has_lecture = 1;
+
 query rowsort
 select * from
     __mock_table_tas_2022 inner join __mock_table_schedule_2022

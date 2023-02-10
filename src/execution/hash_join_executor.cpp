@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "execution/executors/hash_join_executor.h"
+#include "type/value_factory.h"
 
 // Note for 2022 Fall: You don't need to implement HashJoinExecutor to pass all tests. You ONLY need to implement it
 // if you want to get faster in leaderboard tests.
@@ -32,12 +33,48 @@ void HashJoinExecutor::Init() {
   left_child_->Init();
   right_child_->Init();
   hht_.Clear();
-  hash_key_ = Value();
+  Value hash_key;
+  std::vector<Tuple>().swap(ret_tuples_);
+
   Tuple tuple;
   RID rid;
+  // bulid hashmap using left data
   while (left_child_->Next(&tuple, &rid)) {
     Value value = plan_->LeftJoinKeyExpression().Evaluate(&tuple, left_child_->GetOutputSchema());
     hht_.Insert(value, tuple);
+  }
+  // Probe
+  while (right_child_->Next(&tuple, &rid)) {
+
+    hash_key = plan_->RightJoinKeyExpression().Evaluate(&tuple, right_child_->GetOutputSchema()); 
+    if (hht_.Count(hash_key) == 0) {
+      continue;
+    } 
+    assert(hht_.Count(hash_key) > 0);
+
+    auto left_tuples = hht_.Scan(hash_key);
+    auto right_values = GetValuesFromTuple(&tuple, &right_child_->GetOutputSchema());
+    for (const auto & left_tuple : left_tuples) {
+      auto left_values = GetValuesFromTuple(&left_tuple, &left_child_->GetOutputSchema()); 
+      left_values.insert(left_values.end(), right_values.begin(), right_values.end());
+      ret_tuples_.emplace_back(Tuple(left_values, &GetOutputSchema()));
+    }
+  }
+  // LeftJoin: Unmatched
+  if (plan_->GetJoinType() == JoinType::LEFT) {
+    auto left_tuples = hht_.UnMatched();
+    if (left_tuples.empty()) {
+      return;
+    }
+    std::vector<Value> right_values;
+    for (const Column &col : right_child_->GetOutputSchema().GetColumns()) {
+      right_values.emplace_back(ValueFactory::GetNullValueByType(col.GetType()));
+    }
+    for (const auto & left_tuple : left_tuples) {
+      auto left_values = GetValuesFromTuple(&left_tuple, &left_child_->GetOutputSchema()); 
+      left_values.insert(left_values.end(), right_values.begin(), right_values.end());
+      ret_tuples_.emplace_back(Tuple(left_values, &GetOutputSchema()));
+    }
   }
 }
 auto HashJoinExecutor::GetValuesFromTuple(const Tuple *tuple, const Schema *output_schema) -> std::vector<Value> {
@@ -51,23 +88,13 @@ auto HashJoinExecutor::GetValuesFromTuple(const Tuple *tuple, const Schema *outp
 }
 
 auto HashJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
-  while (true) {
-    while (hht_.Count(hash_key_) == 0) {
-      if (!right_child_->Next(tuple, rid)) {
-        return false;
-      }
-      hash_key_ = plan_->RightJoinKeyExpression().Evaluate(tuple, right_child_->GetOutputSchema()); 
-    }
-    assert(hht_.Count(hash_key_) > 0);
-
-    Tuple left_tuple = hht_.Pop(hash_key_);
-    auto left_values = GetValuesFromTuple(&left_tuple, &left_child_->GetOutputSchema());
-    auto right_values = GetValuesFromTuple(tuple, &right_child_->GetOutputSchema());
-    left_values.insert(left_values.end(), right_values.begin(), right_values.end());
-    *tuple = Tuple(std::move(left_values), &GetOutputSchema());
+  while (!ret_tuples_.empty()) {
+    *tuple = ret_tuples_.back();
+    ret_tuples_.pop_back();
+    *rid = tuple->GetRid();
     return true;
-  }
-
+  } 
+  return false;
 }
 
 }  // namespace bustub
