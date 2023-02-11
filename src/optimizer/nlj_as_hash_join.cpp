@@ -44,8 +44,6 @@ auto PushDownExpressionForJoin(const AbstractExpressionRef expr, size_t left_col
           constant_value_expr != nullptr) {
         
         auto col_idx = column_value_expr->GetColIdx();
-        // std::cout << "===================col_idx: " << col_idx <<std::endl;
-        // std::cout << left_column_cnt << ' '<<right_column_cnt <<'\n';
         if (col_idx < left_column_cnt) {
           AbstractExpressionRef x = std::make_shared<ColumnValueExpression>(0, col_idx, column_value_expr->GetReturnType());
           AbstractExpressionRef y = std::make_shared<ConstantValueExpression>(constant_value_expr->val_);
@@ -70,7 +68,6 @@ auto PushDownExpressionForJoin(const AbstractExpressionRef expr, size_t left_col
       if (const auto *constant_value_expr = dynamic_cast<const ConstantValueExpression*>(expr->GetChildAt(0).get());
           constant_value_expr != nullptr) {
         auto col_idx = column_value_expr->GetColIdx();
-        // std::cout << "===================col_idx: " << col_idx <<std::endl;
         if (col_idx < left_column_cnt) {
           AbstractExpressionRef y = std::make_shared<ColumnValueExpression>(0, col_idx, column_value_expr->GetReturnType());
           AbstractExpressionRef x = std::make_shared<ConstantValueExpression>(constant_value_expr->val_);
@@ -108,7 +105,26 @@ auto PushDownExpressionForJoin(const AbstractExpressionRef expr, size_t left_col
   return std::make_pair(lret, rret);                                 
   
 }
-
+auto RewriteExpressionForJoin(const AbstractExpressionRef &expr, size_t left_column_cnt,
+                                         size_t right_column_cnt) -> AbstractExpressionRef {
+  std::vector<AbstractExpressionRef> children;
+  for (const auto &child : expr->GetChildren()) {
+    children.emplace_back(RewriteExpressionForJoin(child, left_column_cnt, right_column_cnt));
+  }
+  if (const auto *column_value_expr = dynamic_cast<const ColumnValueExpression *>(expr.get());
+      column_value_expr != nullptr) {
+    BUSTUB_ENSURE(column_value_expr->GetTupleIdx() == 0, "tuple_idx cannot be value other than 0 before this stage.")
+    auto col_idx = column_value_expr->GetColIdx();
+    if (col_idx < left_column_cnt) {
+      return std::make_shared<ColumnValueExpression>(0, col_idx, column_value_expr->GetReturnType());
+    }
+    if (col_idx >= left_column_cnt && col_idx < left_column_cnt + right_column_cnt) {
+      return std::make_shared<ColumnValueExpression>(1, col_idx - left_column_cnt, column_value_expr->GetReturnType());
+    }
+    throw bustub::Exception("col_idx not in range");
+  }
+  return expr->CloneWithChildren(children);
+}
 auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
   if (plan->GetType() == PlanType::NestedLoopJoin) {
     const auto &nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*plan);
@@ -123,31 +139,109 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
     if (left_predicate != nullptr && right_predicate != nullptr) {
       AbstractPlanNodeRef left_filter = std::make_shared<FilterPlanNode> (
                           std::make_shared<Schema>(left_plan->OutputSchema()), 
-                          std::move(left_predicate), std::move(left_plan));
+                          left_predicate, left_plan);
       AbstractPlanNodeRef right_filter= std::make_shared<FilterPlanNode> (
                           std::make_shared<Schema>(right_plan->OutputSchema()), 
-                          std::move(right_predicate), std::move(right_plan));
+                          right_predicate, right_plan);
       
-      auto new_nlj_plan=  std::make_shared<NestedLoopJoinPlanNode>(
+      if (left_plan->GetType() == PlanType::NestedLoopJoin && right_plan->GetType() == PlanType::NestedLoopJoin) {
+        const auto &left_nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*left_plan);
+        const auto &right_nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*right_plan);
+        auto left_nlj_predicate = RewriteExpressionForJoin(left_predicate,
+                        left_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
+                        left_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
+        auto right_nlj_predicate = RewriteExpressionForJoin(right_predicate,
+                        right_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
+                        right_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
+        auto new_left_plan = std::make_shared<NestedLoopJoinPlanNode>(
+                             left_nlj_plan.output_schema_, left_nlj_plan.GetLeftPlan(),
+                             left_nlj_plan.GetRightPlan(), left_nlj_predicate, left_nlj_plan.GetJoinType());
+        auto new_right_plan = std::make_shared<NestedLoopJoinPlanNode>(
+                             right_nlj_plan.output_schema_, right_nlj_plan.GetLeftPlan(),
+                             right_nlj_plan.GetRightPlan(), right_nlj_predicate, right_nlj_plan.GetJoinType());
+
+        return std::make_shared<NestedLoopJoinPlanNode>(
                           nlj_plan.output_schema_,
-                          left_filter, right_filter,
+                          new_left_plan, new_right_plan,
+                          nlj_plan.predicate_, nlj_plan.GetJoinType()); 
+      }
+      if (left_plan->GetType() == PlanType::NestedLoopJoin && right_plan->GetType() != PlanType::NestedLoopJoin) {
+        const auto &left_nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*left_plan);
+        auto left_nlj_predicate = RewriteExpressionForJoin(left_predicate,
+                        left_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
+                        left_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
+        auto new_left_plan = std::make_shared<NestedLoopJoinPlanNode>(
+                             left_nlj_plan.output_schema_, left_nlj_plan.GetLeftPlan(),
+                             left_nlj_plan.GetRightPlan(), left_nlj_predicate, left_nlj_plan.GetJoinType());
+
+        return std::make_shared<NestedLoopJoinPlanNode>(
+                          nlj_plan.output_schema_,
+                          new_left_plan, right_filter,
+                          nlj_plan.predicate_, nlj_plan.GetJoinType()); 
+      }
+      if (left_plan->GetType() != PlanType::NestedLoopJoin && right_plan->GetType() == PlanType::NestedLoopJoin) {
+        const auto &right_nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*right_plan);
+
+        auto right_nlj_predicate = RewriteExpressionForJoin(right_predicate,
+                        right_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
+                        right_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
+        auto new_right_plan = std::make_shared<NestedLoopJoinPlanNode>(
+                             right_nlj_plan.output_schema_, right_nlj_plan.GetLeftPlan(),
+                             right_nlj_plan.GetRightPlan(), right_nlj_predicate, right_nlj_plan.GetJoinType());
+
+        return std::make_shared<NestedLoopJoinPlanNode>(
+                          nlj_plan.output_schema_,
+                          left_filter, new_right_plan,
                           nlj_plan.predicate_, nlj_plan.GetJoinType());
-      return new_nlj_plan;
+      }
+      return std::make_shared<NestedLoopJoinPlanNode>(
+                        nlj_plan.output_schema_,
+                        left_filter, right_filter,
+                        nlj_plan.predicate_, nlj_plan.GetJoinType());
     }
     if (left_predicate != nullptr && right_predicate == nullptr) {
+
       auto left_filter = std::make_shared<FilterPlanNode> (
                           std::make_shared<Schema>(left_plan->OutputSchema()), 
                           left_predicate, left_plan);
-      auto new_nlj_plan= std::make_shared<NestedLoopJoinPlanNode>(
+      if (left_plan->GetType() == PlanType::NestedLoopJoin) {
+        const auto &left_nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*left_plan);
+        auto left_nlj_predicate = RewriteExpressionForJoin(left_predicate,
+                        left_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
+                        left_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
+        auto new_left_plan = std::make_shared<NestedLoopJoinPlanNode>(
+                             left_nlj_plan.output_schema_, left_nlj_plan.GetLeftPlan(),
+                             left_nlj_plan.GetRightPlan(), left_nlj_predicate, left_nlj_plan.GetJoinType());
+        return std::make_shared<NestedLoopJoinPlanNode>(
                           nlj_plan.output_schema_,
-                          left_filter, right_plan,
-                          nlj_plan.predicate_, nlj_plan.GetJoinType());
-      return new_nlj_plan;
+                          new_left_plan, right_plan,
+                          nlj_plan.predicate_, nlj_plan.GetJoinType()); 
+      }
+      return std::make_shared<NestedLoopJoinPlanNode>(
+                    nlj_plan.output_schema_,
+                    left_filter, right_plan,
+                    nlj_plan.predicate_, nlj_plan.GetJoinType());
+
     }
     if (left_predicate == nullptr && right_predicate != nullptr) { 
       auto right_filter =std::make_shared<FilterPlanNode> (
                           std::make_shared<Schema>(right_plan->OutputSchema()), 
                           right_predicate, right_plan);
+      if (right_plan->GetType() == PlanType::NestedLoopJoin) {
+        const auto &right_nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*right_plan);
+
+        auto right_nlj_predicate = RewriteExpressionForJoin(right_predicate,
+                        right_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
+                        right_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
+        auto new_right_plan = std::make_shared<NestedLoopJoinPlanNode>(
+                             right_nlj_plan.output_schema_, right_nlj_plan.GetLeftPlan(),
+                             right_nlj_plan.GetRightPlan(), right_nlj_predicate, right_nlj_plan.GetJoinType());
+
+        return std::make_shared<NestedLoopJoinPlanNode>(
+                          nlj_plan.output_schema_,
+                          left_plan, new_right_plan,
+                          nlj_plan.predicate_, nlj_plan.GetJoinType());
+      }
       auto new_nlj_plan= std::make_shared<NestedLoopJoinPlanNode>(
                           nlj_plan.output_schema_,
                           left_plan, right_filter,
@@ -160,7 +254,6 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
 }
 
 auto Optimizer::OptimizeNLJAsHashJoin(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
-  std::cout << "OptimizeNLJAsHashJoin\n" <<std::endl;
 
   auto optimized_plan = PredicatePushDown(plan);
 
