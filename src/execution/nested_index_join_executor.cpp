@@ -61,6 +61,7 @@ auto NestIndexJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     }
 
     Value key_value = plan_->KeyPredicate()->Evaluate(&left_tuple, child_executor_->GetOutputSchema());
+    
     Schema key_schema{std::vector<Column>{Column("key_schema", plan_->KeyPredicate()->GetReturnType())}};
     Tuple key_tuple = Tuple(std::vector<Value>{key_value}, &key_schema);
     b_plus_tree_index_->ScanKey(key_tuple, &right_rids_, GetExecutorContext()->GetTransaction());

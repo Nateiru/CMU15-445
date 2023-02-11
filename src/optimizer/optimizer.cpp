@@ -12,7 +12,7 @@ auto Optimizer::Optimize(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef
     p = OptimizeMergeProjection(p);
     p = OptimizeMergeFilterNLJ(p);
     p = OptimizeNLJAsIndexJoin(p);
-    p = OptimizeNLJAsHashJoin(p);  // Enable this rule after you  
+    // p = OptimizeNLJAsHashJoin(p);  // Enable this rule after you  
     p = OptimizeOrderByAsIndexScan(p);
     p = OptimizeSortLimitAsTopN(p);// Sort + Limit => TopN
     return p;
