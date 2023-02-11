@@ -1,4 +1,13 @@
 statement ok
+CREATE TABLE t1(x int, y int);
+
+statement ok
+CREATE TABLE t2(x int, y int);
+
+statement ok
+CREATE TABLE t3(x int, y int);
+
+statement ok
 CREATE TABLE t4(x int, y int);
 
 statement ok
@@ -11,3 +20,16 @@ statement ok
 EXPLAIN SELECT * FROM t4, t5, t6
   WHERE (t4.x = t5.x) AND (t5.y = t6.y) AND (t4.y >= 1000000)
     AND (t4.y < 1500000) AND (t6.x >= 100000) AND (t6.x < 150000);
+
+statement ok
+EXPLAIN SELECT * FROM t1, t2, t3, t4, t5, t6
+  WHERE (t1.x = t2.x) AND (t2.x = t3.x) AND (t4.x = t5.x) AND (t5.y = t6.y) 
+    AND (t4.y >= 1000000) AND (t4.y < 1500000) 
+    AND (t6.x >= 1000000) AND (t6.x < 1500000) 
+    AND (t1.x >= 1000000) AND (t1.x < 1500000) 
+    AND (t2.x >= 1000000) AND (t2.x < 1500000)
+    AND (t3.x >= 1000000) AND (t3.x < 1500000)
+    AND (t1.y >= 1000000) AND (t1.y < 1500000) 
+    AND (t2.y >= 1000000) AND (t2.y < 1500000)
+    AND (t3.y >= 1000000) AND (t3.y < 1500000); 
+    

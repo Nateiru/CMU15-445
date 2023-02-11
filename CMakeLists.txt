@@ -327,6 +327,7 @@ set(P3_FILES
         "src/include/optimizer/optimizer.h"
         "src/optimizer/optimizer_custom_rules.cpp"
         "src/optimizer/sort_limit_as_topn.cpp"
+        "src/optimizer/nlj_as_hash_join.cpp"
         ${P2_FILES}
         )
 

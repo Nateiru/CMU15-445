@@ -21,7 +21,7 @@
 
 namespace bustub {
 
-auto PushDownExpressionForJoin(const AbstractExpressionRef expr, size_t left_column_cnt,
+auto PushDownExpressionForJoin(const AbstractExpressionRef &expr, size_t left_column_cnt,
                                          size_t right_column_cnt) -> std::pair<AbstractExpressionRef, AbstractExpressionRef>{
   
   std::vector<AbstractExpressionRef> left_children;
@@ -38,27 +38,27 @@ auto PushDownExpressionForJoin(const AbstractExpressionRef expr, size_t left_col
   }
   if (const auto *comparison_expr = dynamic_cast<const ComparisonExpression *>(expr.get());
       comparison_expr != nullptr) { 
+    assert(comparison_expr->GetChildren().size() == 2);
     if (const auto *column_value_expr = dynamic_cast<const ColumnValueExpression *>(expr->GetChildAt(0).get());
         column_value_expr != nullptr) {
       if (const auto *constant_value_expr = dynamic_cast<const ConstantValueExpression*>(expr->GetChildAt(1).get());
           constant_value_expr != nullptr) {
         
         auto col_idx = column_value_expr->GetColIdx();
-        if (col_idx < left_column_cnt) {
+        if (column_value_expr->GetTupleIdx() == 0) {
           AbstractExpressionRef x = std::make_shared<ColumnValueExpression>(0, col_idx, column_value_expr->GetReturnType());
           AbstractExpressionRef y = std::make_shared<ConstantValueExpression>(constant_value_expr->val_);
           std::vector<AbstractExpressionRef> children {x, y};
-          AbstractExpressionRef lret = expr->CloneWithChildren(children);
-          AbstractExpressionRef rret; 
+          AbstractExpressionRef lret = comparison_expr->CloneWithChildren(children);
+          AbstractExpressionRef rret{nullptr}; 
           return std::make_pair(lret, rret);
         }
-        if (col_idx >= left_column_cnt && col_idx < left_column_cnt + right_column_cnt) {
-
-          AbstractExpressionRef x = std::make_shared<ColumnValueExpression>(0, col_idx - left_column_cnt, column_value_expr->GetReturnType());
+        else {
+          AbstractExpressionRef x = std::make_shared<ColumnValueExpression>(0, col_idx, column_value_expr->GetReturnType());
           AbstractExpressionRef y = std::make_shared<ConstantValueExpression>(constant_value_expr->val_);
           std::vector<AbstractExpressionRef> children {x, y};
-          AbstractExpressionRef rret = expr->CloneWithChildren(children);
-          AbstractExpressionRef lret; 
+          AbstractExpressionRef rret = comparison_expr->CloneWithChildren(children);
+          AbstractExpressionRef lret{nullptr};
           return std::make_pair(lret, rret);
         }
       }
@@ -68,21 +68,46 @@ auto PushDownExpressionForJoin(const AbstractExpressionRef expr, size_t left_col
       if (const auto *constant_value_expr = dynamic_cast<const ConstantValueExpression*>(expr->GetChildAt(0).get());
           constant_value_expr != nullptr) {
         auto col_idx = column_value_expr->GetColIdx();
-        if (col_idx < left_column_cnt) {
+        if (column_value_expr->GetTupleIdx() == 0) {
           AbstractExpressionRef y = std::make_shared<ColumnValueExpression>(0, col_idx, column_value_expr->GetReturnType());
           AbstractExpressionRef x = std::make_shared<ConstantValueExpression>(constant_value_expr->val_);
           std::vector<AbstractExpressionRef> children {x, y};
-          AbstractExpressionRef lret = expr->CloneWithChildren(children);
-          AbstractExpressionRef rret; 
+          AbstractExpressionRef lret = comparison_expr->CloneWithChildren(children);
+          AbstractExpressionRef rret{nullptr}; 
           return std::make_pair(lret, rret);
         }
-        if (col_idx >= left_column_cnt && col_idx < left_column_cnt + right_column_cnt) {
-
-          AbstractExpressionRef y = std::make_shared<ColumnValueExpression>(0, col_idx - left_column_cnt, column_value_expr->GetReturnType());
+        else {
+          AbstractExpressionRef y = std::make_shared<ColumnValueExpression>(0, col_idx, column_value_expr->GetReturnType());
           AbstractExpressionRef x = std::make_shared<ConstantValueExpression>(constant_value_expr->val_);
           std::vector<AbstractExpressionRef> children {x, y};
-          AbstractExpressionRef rret = expr->CloneWithChildren(children);
-          AbstractExpressionRef lret; 
+          AbstractExpressionRef rret = comparison_expr->CloneWithChildren(children);
+          AbstractExpressionRef lret{nullptr}; 
+          return std::make_pair(lret, rret);
+        }
+      }
+    }
+    if (const auto *left_column_value_expr = dynamic_cast<const ColumnValueExpression *>(expr->GetChildAt(0).get());
+        left_column_value_expr != nullptr) {
+      if (const auto *right_column_value_expr = dynamic_cast<const ColumnValueExpression *>(expr->GetChildAt(1).get());
+          right_column_value_expr != nullptr) {
+        if (left_column_value_expr->GetTupleIdx() == 0 && right_column_value_expr->GetTupleIdx() == 0) {
+          AbstractExpressionRef x = std::make_shared<ColumnValueExpression>(0, left_column_value_expr->GetColIdx(), 
+                                                                               left_column_value_expr->GetReturnType());
+          AbstractExpressionRef y = std::make_shared<ColumnValueExpression>(0, right_column_value_expr->GetColIdx(),
+                                                                               right_column_value_expr->GetReturnType());
+          std::vector<AbstractExpressionRef> children {x, y};
+          AbstractExpressionRef lret = comparison_expr->CloneWithChildren(children);
+          AbstractExpressionRef rret{nullptr};
+          return std::make_pair(lret, rret);
+        }
+        if (left_column_value_expr->GetTupleIdx() == 1 && right_column_value_expr->GetTupleIdx() == 1) {
+          AbstractExpressionRef x = std::make_shared<ColumnValueExpression>(0, left_column_value_expr->GetColIdx(), 
+                                                                               left_column_value_expr->GetReturnType());
+          AbstractExpressionRef y = std::make_shared<ColumnValueExpression>(0, right_column_value_expr->GetColIdx(),
+                                                                               right_column_value_expr->GetReturnType());
+          std::vector<AbstractExpressionRef> children {x, y};
+          AbstractExpressionRef rret = comparison_expr->CloneWithChildren(children);
+          AbstractExpressionRef lret{nullptr}; 
           return std::make_pair(lret, rret);
         }
       }
@@ -102,8 +127,61 @@ auto PushDownExpressionForJoin(const AbstractExpressionRef expr, size_t left_col
   if (right_children.size() == 2) {
     rret = std::make_shared<LogicExpression>(right_children[0], right_children[1], LogicType::And);
   }
-  return std::make_pair(lret, rret);                                 
+  return std::make_pair(lret, rret); 
   
+}
+auto ReWriteExpression(const AbstractExpressionRef &expr) ->  AbstractExpressionRef{
+
+  if (const auto *comparison_expr = dynamic_cast<const ComparisonExpression *>(expr.get());
+      comparison_expr != nullptr) { 
+    assert(comparison_expr->GetChildren().size() == 2);
+    if (const auto *column_value_expr = dynamic_cast<const ColumnValueExpression *>(expr->GetChildAt(0).get());
+        column_value_expr != nullptr) {
+      if (const auto *constant_value_expr = dynamic_cast<const ConstantValueExpression*>(expr->GetChildAt(1).get());
+          constant_value_expr != nullptr) {
+        return nullptr;
+      }
+    }
+    if (const auto *column_value_expr = dynamic_cast<const ColumnValueExpression *>(expr->GetChildAt(1).get());
+        column_value_expr != nullptr) {
+      if (const auto *constant_value_expr = dynamic_cast<const ConstantValueExpression*>(expr->GetChildAt(0).get());
+          constant_value_expr != nullptr) {
+        return nullptr;
+      }
+    }
+    if (const auto *left_column_value_expr = dynamic_cast<const ColumnValueExpression *>(expr->GetChildAt(0).get());
+        left_column_value_expr != nullptr) {
+      if (const auto *right_column_value_expr = dynamic_cast<const ColumnValueExpression *>(expr->GetChildAt(1).get());
+          right_column_value_expr != nullptr) {
+        if (left_column_value_expr->GetTupleIdx() == 0 && right_column_value_expr->GetTupleIdx() == 0) {
+          return nullptr;
+        }
+        if (left_column_value_expr->GetTupleIdx() == 1 && right_column_value_expr->GetTupleIdx() == 1) {
+          return nullptr;
+        }
+      }
+    }
+  }
+
+  std::vector<AbstractExpressionRef> children;
+
+  for (const auto &child : expr->GetChildren()) {
+    auto ret = ReWriteExpression(child);
+    if (ret != nullptr) {
+      children.emplace_back(ret);
+    }
+  }
+  assert(children.size() <= 2);
+  if (children.size() == 0) {
+    if (expr->children_.size() == 0) {
+      return expr;
+    }
+    return nullptr;
+  }
+  if (children.size() == 1) {
+    return children[0];
+  }
+  return expr->CloneWithChildren(children);
 }
 auto RewriteExpressionForJoin(const AbstractExpressionRef &expr, size_t left_column_cnt,
                                          size_t right_column_cnt) -> AbstractExpressionRef {
@@ -135,6 +213,8 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
     auto [left_predicate, right_predicate] = PushDownExpressionForJoin(expr, 
                                               left_plan->OutputSchema().GetColumnCount(),
                                               right_plan->OutputSchema().GetColumnCount());
+    auto nlj_predicate = ReWriteExpression(expr);
+
     std::vector<AbstractPlanNodeRef> children;
     if (left_predicate != nullptr && right_predicate != nullptr) {
       AbstractPlanNodeRef left_filter = std::make_shared<FilterPlanNode> (
@@ -145,7 +225,7 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
                           right_predicate, right_plan);
       
       if (left_plan->GetType() == PlanType::NestedLoopJoin && right_plan->GetType() == PlanType::NestedLoopJoin) {
-        const auto &left_nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*left_plan);
+        const auto &left_nlj_plan  = dynamic_cast<const NestedLoopJoinPlanNode &>(*left_plan);
         const auto &right_nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*right_plan);
         auto left_nlj_predicate = RewriteExpressionForJoin(left_predicate,
                         left_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
@@ -163,7 +243,7 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
         return std::make_shared<NestedLoopJoinPlanNode>(
                           nlj_plan.output_schema_,
                           new_left_plan, new_right_plan,
-                          nlj_plan.predicate_, nlj_plan.GetJoinType()); 
+                          nlj_predicate, nlj_plan.GetJoinType()); 
       }
       if (left_plan->GetType() == PlanType::NestedLoopJoin && right_plan->GetType() != PlanType::NestedLoopJoin) {
         const auto &left_nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*left_plan);
@@ -177,11 +257,10 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
         return std::make_shared<NestedLoopJoinPlanNode>(
                           nlj_plan.output_schema_,
                           new_left_plan, right_filter,
-                          nlj_plan.predicate_, nlj_plan.GetJoinType()); 
+                          nlj_predicate, nlj_plan.GetJoinType()); 
       }
       if (left_plan->GetType() != PlanType::NestedLoopJoin && right_plan->GetType() == PlanType::NestedLoopJoin) {
         const auto &right_nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*right_plan);
-
         auto right_nlj_predicate = RewriteExpressionForJoin(right_predicate,
                         right_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
                         right_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
@@ -192,18 +271,18 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
         return std::make_shared<NestedLoopJoinPlanNode>(
                           nlj_plan.output_schema_,
                           left_filter, new_right_plan,
-                          nlj_plan.predicate_, nlj_plan.GetJoinType());
+                          nlj_predicate, nlj_plan.GetJoinType());
       }
       return std::make_shared<NestedLoopJoinPlanNode>(
                         nlj_plan.output_schema_,
                         left_filter, right_filter,
-                        nlj_plan.predicate_, nlj_plan.GetJoinType());
+                        nlj_predicate, nlj_plan.GetJoinType());
     }
     if (left_predicate != nullptr && right_predicate == nullptr) {
 
       auto left_filter = std::make_shared<FilterPlanNode> (
-                          std::make_shared<Schema>(left_plan->OutputSchema()), 
-                          left_predicate, left_plan);
+                         std::make_shared<Schema>(left_plan->OutputSchema()), 
+                         left_predicate, left_plan);
       if (left_plan->GetType() == PlanType::NestedLoopJoin) {
         const auto &left_nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*left_plan);
         auto left_nlj_predicate = RewriteExpressionForJoin(left_predicate,
@@ -215,16 +294,16 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
         return std::make_shared<NestedLoopJoinPlanNode>(
                           nlj_plan.output_schema_,
                           new_left_plan, right_plan,
-                          nlj_plan.predicate_, nlj_plan.GetJoinType()); 
+                          nlj_predicate, nlj_plan.GetJoinType()); 
       }
       return std::make_shared<NestedLoopJoinPlanNode>(
                     nlj_plan.output_schema_,
                     left_filter, right_plan,
-                    nlj_plan.predicate_, nlj_plan.GetJoinType());
+                    nlj_predicate, nlj_plan.GetJoinType());
 
     }
     if (left_predicate == nullptr && right_predicate != nullptr) { 
-      auto right_filter =std::make_shared<FilterPlanNode> (
+      auto right_filter = std::make_shared<FilterPlanNode> (
                           std::make_shared<Schema>(right_plan->OutputSchema()), 
                           right_predicate, right_plan);
       if (right_plan->GetType() == PlanType::NestedLoopJoin) {
@@ -240,13 +319,12 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
         return std::make_shared<NestedLoopJoinPlanNode>(
                           nlj_plan.output_schema_,
                           left_plan, new_right_plan,
-                          nlj_plan.predicate_, nlj_plan.GetJoinType());
+                          nlj_predicate, nlj_plan.GetJoinType());
       }
-      auto new_nlj_plan= std::make_shared<NestedLoopJoinPlanNode>(
-                          nlj_plan.output_schema_,
-                          left_plan, right_filter,
-                          nlj_plan.predicate_, nlj_plan.GetJoinType());
-      return new_nlj_plan;
+      return std::make_shared<NestedLoopJoinPlanNode>(
+                        nlj_plan.output_schema_,
+                        left_plan, right_filter,
+                        nlj_predicate, nlj_plan.GetJoinType());
     }
     return plan;
   }
