@@ -1,35 +1,13 @@
 statement ok
-CREATE TABLE t1(x int, y int);
+explain (o) select count(*), max(__mock_t1_50k.x), max(__mock_t1_50k.y), max(__mock_t2_100k.x), max(__mock_t2_100k.y), max(__mock_t3_1k.x), max(__mock_t3_1k.y)
+    from (select * from __mock_t1_50k, __mock_t2_100k where __mock_t1_50k.x = __mock_t2_100k.x), __mock_t3_1k
+        where (__mock_t3_1k.y = __mock_t2_100k.y)
+            and (__mock_t1_50k.y >= 100) and (__mock_t1_50k.y < 1500) and (__mock_t3_1k.x < 1500) and (__mock_t3_1k.x >= 100);
 
-statement ok
-CREATE TABLE t2(x int, y int);
-
-statement ok
-CREATE TABLE t3(x int, y int);
-
-statement ok
-CREATE TABLE t4(x int, y int);
-
-statement ok
-CREATE TABLE t5(x int, y int);
-
-statement ok
-CREATE TABLE t6(x int, y int);
-
-statement ok
-EXPLAIN SELECT * FROM t4, t5, t6
-  WHERE (t4.x = t5.x) AND (t5.y = t6.y) AND (t4.y >= 1000000)
-    AND (t4.y < 1500000) AND (t6.x >= 100000) AND (t6.x < 150000);
-
-statement ok
-EXPLAIN SELECT * FROM t1, t2, t3, t4, t5, t6
-  WHERE (t1.x = t2.x) AND (t2.x = t3.x) AND (t4.x = t5.x) AND (t5.y = t6.y) 
-    AND (t4.y >= 1000000) AND (t4.y < 1500000) 
-    AND (t6.x >= 1000000) AND (t6.x < 1500000) 
-    AND (t1.x >= 1000000) AND (t1.x < 1500000) 
-    AND (t2.x >= 1000000) AND (t2.x < 1500000)
-    AND (t3.x >= 1000000) AND (t3.x < 1500000)
-    AND (t1.y >= 1000000) AND (t1.y < 1500000) 
-    AND (t2.y >= 1000000) AND (t2.y < 1500000)
-    AND (t3.y >= 1000000) AND (t3.y < 1500000); 
-    
+query +timing:x10:.q2
+select count(*), max(__mock_t1_50k.x), max(__mock_t1_50k.y), max(__mock_t2_100k.x), max(__mock_t2_100k.y), max(__mock_t3_1k.x), max(__mock_t3_1k.y)
+    from (select * from __mock_t1_50k, __mock_t2_100k where __mock_t1_50k.x = __mock_t2_100k.x), __mock_t3_1k
+        where (__mock_t3_1k.y = __mock_t2_100k.y)
+            and (__mock_t1_50k.y >= 100) and (__mock_t1_50k.y < 1500) and (__mock_t3_1k.x < 1500) and (__mock_t3_1k.x >= 100);
+----
+400000 149999 1499990 149999 1499990 149999 1499990 

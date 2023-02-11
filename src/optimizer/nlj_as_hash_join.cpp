@@ -21,21 +21,8 @@
 
 namespace bustub {
 
-auto PushDownExpressionForJoin(const AbstractExpressionRef &expr, size_t left_column_cnt,
-                                         size_t right_column_cnt) -> std::pair<AbstractExpressionRef, AbstractExpressionRef>{
+auto PushDownExpressionForJoin(const AbstractExpressionRef &expr) -> std::pair<AbstractExpressionRef, AbstractExpressionRef>{
   
-  std::vector<AbstractExpressionRef> left_children;
-  std::vector<AbstractExpressionRef> right_children;
-
-  for (const auto &child : expr->GetChildren()) {
-    auto ret = PushDownExpressionForJoin(child, left_column_cnt, right_column_cnt);
-    if (ret.first != nullptr) {
-      left_children.emplace_back(ret.first);
-    }
-    if (ret.second != nullptr) {
-      right_children.emplace_back(ret.second);
-    }
-  }
   if (const auto *comparison_expr = dynamic_cast<const ComparisonExpression *>(expr.get());
       comparison_expr != nullptr) { 
     assert(comparison_expr->GetChildren().size() == 2);
@@ -113,6 +100,18 @@ auto PushDownExpressionForJoin(const AbstractExpressionRef &expr, size_t left_co
       }
     }
   }
+  std::vector<AbstractExpressionRef> left_children;
+  std::vector<AbstractExpressionRef> right_children;
+
+  for (const auto &child : expr->GetChildren()) {
+    auto ret = PushDownExpressionForJoin(child);
+    if (ret.first != nullptr) {
+      left_children.emplace_back(ret.first);
+    }
+    if (ret.second != nullptr) {
+      right_children.emplace_back(ret.second);
+    }
+  }
   assert(left_children.size() <= 2 && right_children.size() <= 2);
   AbstractExpressionRef lret{nullptr}, rret{nullptr};
   if (left_children.size() == 1) {
@@ -131,6 +130,9 @@ auto PushDownExpressionForJoin(const AbstractExpressionRef &expr, size_t left_co
   
 }
 auto ReWriteExpression(const AbstractExpressionRef &expr) ->  AbstractExpressionRef{
+  if (expr->children_.size() == 0) {
+    return expr;
+  }
 
   if (const auto *comparison_expr = dynamic_cast<const ComparisonExpression *>(expr.get());
       comparison_expr != nullptr) { 
@@ -161,6 +163,7 @@ auto ReWriteExpression(const AbstractExpressionRef &expr) ->  AbstractExpression
         }
       }
     }
+    return expr;
   }
 
   std::vector<AbstractExpressionRef> children;
@@ -173,9 +176,6 @@ auto ReWriteExpression(const AbstractExpressionRef &expr) ->  AbstractExpression
   }
   assert(children.size() <= 2);
   if (children.size() == 0) {
-    if (expr->children_.size() == 0) {
-      return expr;
-    }
     return nullptr;
   }
   if (children.size() == 1) {
@@ -203,6 +203,12 @@ auto RewriteExpressionForJoin(const AbstractExpressionRef &expr, size_t left_col
   }
   return expr->CloneWithChildren(children);
 }
+auto IsPredicateTrue(const AbstractExpression &expr) -> bool {
+  if (const auto *const_expr = dynamic_cast<const ConstantValueExpression *>(&expr); const_expr != nullptr) {
+    return const_expr->val_.CastAs(TypeId::BOOLEAN).GetAs<bool>();
+  }
+  return false;
+}
 auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
   if (plan->GetType() == PlanType::NestedLoopJoin) {
     const auto &nlj_plan = dynamic_cast<const NestedLoopJoinPlanNode &>(*plan);
@@ -210,9 +216,11 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
     const auto &left_plan =  nlj_plan.GetLeftPlan();
     const auto &right_plan = nlj_plan.GetRightPlan();
     const auto expr = nlj_plan.predicate_;
-    auto [left_predicate, right_predicate] = PushDownExpressionForJoin(expr, 
-                                              left_plan->OutputSchema().GetColumnCount(),
-                                              right_plan->OutputSchema().GetColumnCount());
+    auto [left_predicate, right_predicate] = PushDownExpressionForJoin(expr);
+
+    // auto last_predicate = ReWriteExpression(expr);
+    // AbstractExpressionRef nlj_predicate;
+
     auto nlj_predicate = ReWriteExpression(expr);
 
     std::vector<AbstractPlanNodeRef> children;
@@ -233,6 +241,12 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
         auto right_nlj_predicate = RewriteExpressionForJoin(right_predicate,
                         right_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
                         right_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
+        if (!IsPredicateTrue(left_nlj_plan.Predicate())) {
+          left_nlj_predicate = std::make_shared<LogicExpression>(left_nlj_predicate, left_nlj_plan.predicate_, LogicType::And); 
+        }
+        if (!IsPredicateTrue(right_nlj_plan.Predicate())) {
+          right_nlj_predicate = std::make_shared<LogicExpression>(right_nlj_predicate, right_nlj_plan.predicate_, LogicType::And); 
+        }
         auto new_left_plan = std::make_shared<NestedLoopJoinPlanNode>(
                              left_nlj_plan.output_schema_, left_nlj_plan.GetLeftPlan(),
                              left_nlj_plan.GetRightPlan(), left_nlj_predicate, left_nlj_plan.GetJoinType());
@@ -250,6 +264,9 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
         auto left_nlj_predicate = RewriteExpressionForJoin(left_predicate,
                         left_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
                         left_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
+        if (!IsPredicateTrue(left_nlj_plan.Predicate())) {
+          left_nlj_predicate = std::make_shared<LogicExpression>(left_nlj_predicate, left_nlj_plan.predicate_, LogicType::And); 
+        }
         auto new_left_plan = std::make_shared<NestedLoopJoinPlanNode>(
                              left_nlj_plan.output_schema_, left_nlj_plan.GetLeftPlan(),
                              left_nlj_plan.GetRightPlan(), left_nlj_predicate, left_nlj_plan.GetJoinType());
@@ -264,6 +281,9 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
         auto right_nlj_predicate = RewriteExpressionForJoin(right_predicate,
                         right_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
                         right_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
+        if (!IsPredicateTrue(right_nlj_plan.Predicate())) {
+          right_nlj_predicate = std::make_shared<LogicExpression>(right_nlj_predicate, right_nlj_plan.predicate_, LogicType::And); 
+        }
         auto new_right_plan = std::make_shared<NestedLoopJoinPlanNode>(
                              right_nlj_plan.output_schema_, right_nlj_plan.GetLeftPlan(),
                              right_nlj_plan.GetRightPlan(), right_nlj_predicate, right_nlj_plan.GetJoinType());
@@ -288,6 +308,9 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
         auto left_nlj_predicate = RewriteExpressionForJoin(left_predicate,
                         left_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
                         left_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
+        if (!IsPredicateTrue(left_nlj_plan.Predicate())) {
+          left_nlj_predicate = std::make_shared<LogicExpression>(left_nlj_predicate, left_nlj_plan.predicate_, LogicType::And); 
+        }
         auto new_left_plan = std::make_shared<NestedLoopJoinPlanNode>(
                              left_nlj_plan.output_schema_, left_nlj_plan.GetLeftPlan(),
                              left_nlj_plan.GetRightPlan(), left_nlj_predicate, left_nlj_plan.GetJoinType());
@@ -312,6 +335,9 @@ auto PredicatePushDown(const AbstractPlanNodeRef &plan) -> AbstractPlanNodeRef {
         auto right_nlj_predicate = RewriteExpressionForJoin(right_predicate,
                         right_nlj_plan.GetLeftPlan()->OutputSchema().GetColumnCount(),
                         right_nlj_plan.GetRightPlan()->OutputSchema().GetColumnCount());
+        if (!IsPredicateTrue(right_nlj_plan.Predicate())) {
+          right_nlj_predicate = std::make_shared<LogicExpression>(right_nlj_predicate, right_nlj_plan.predicate_, LogicType::And); 
+        }
         auto new_right_plan = std::make_shared<NestedLoopJoinPlanNode>(
                              right_nlj_plan.output_schema_, right_nlj_plan.GetLeftPlan(),
                              right_nlj_plan.GetRightPlan(), right_nlj_predicate, right_nlj_plan.GetJoinType());
@@ -399,6 +425,12 @@ auto Optimizer::OptimizeNLJAsHashJoin(const AbstractPlanNodeRef &plan) -> Abstra
                 std::swap(left_plan, right_plan);
                 std::swap(left_expr_tuple_0, right_expr_tuple_0); 
               }
+            }
+            if (nlj_plan.GetJoinType() == JoinType::INNER  && 
+                nlj_plan.GetLeftPlan()->GetType()  == PlanType::HashJoin && 
+                nlj_plan.GetRightPlan()->GetType() == PlanType::Filter) {
+                std::swap(left_plan, right_plan);
+                std::swap(left_expr_tuple_0, right_expr_tuple_0); 
             }
             if (left_expr->GetTupleIdx() == 0 && right_expr->GetTupleIdx() == 1) {
               return std::make_shared<HashJoinPlanNode>(nlj_plan.output_schema_, left_plan,
