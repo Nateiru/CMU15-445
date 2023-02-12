@@ -1,5 +1,0 @@
-if(EXISTS "/home/zzy/CMU15-445/build-release/test/binder_test[1]_tests.cmake")
-  include("/home/zzy/CMU15-445/build-release/test/binder_test[1]_tests.cmake")
-else()
-  add_test(binder_test_NOT_BUILT binder_test_NOT_BUILT)
-endif()

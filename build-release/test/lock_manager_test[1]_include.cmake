@@ -1,5 +1,0 @@
-if(EXISTS "/home/zzy/CMU15-445/build-release/test/lock_manager_test[1]_tests.cmake")
-  include("/home/zzy/CMU15-445/build-release/test/lock_manager_test[1]_tests.cmake")
-else()
-  add_test(lock_manager_test_NOT_BUILT lock_manager_test_NOT_BUILT)
-endif()
