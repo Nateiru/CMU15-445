@@ -30,9 +30,12 @@ void AggregationExecutor::Init() {
   child_->Init();
   aht_.Clear();
   used_ = false;
+  // size_t cnt = 0;
   while (child_->Next(&temp_tuple, &temp_rid)) {
     aht_.InsertCombine(MakeAggregateKey(&temp_tuple), MakeAggregateValue(&temp_tuple));
+    // cnt ++;
   }
+  // std::cout << "Aggregation Cnt: " << cnt << std::endl;
   aht_iterator_ = aht_.Begin();
 }
 
@@ -43,6 +46,7 @@ auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       return false;
     }
     *tuple = Tuple(std::move(aht_.GenerateInitialAggregateValue().aggregates_), &GetOutputSchema());
+    *rid = RID{0};
     return true;
   }
   while (aht_iterator_ != aht_.End()) {
@@ -56,6 +60,7 @@ auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     }
 
     *tuple = Tuple(std::move(values), &GetOutputSchema());
+    *rid = tuple->GetRid();
     ++aht_iterator_;
     return true;
   }

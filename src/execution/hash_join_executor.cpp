@@ -39,14 +39,18 @@ void HashJoinExecutor::Init() {
 
   Tuple tuple;
   RID rid;
+  // size_t cnt = 0;
   // bulid hashmap using left data
   while (left_child_->Next(&tuple, &rid)) {
     Value value = plan_->LeftJoinKeyExpression().Evaluate(&tuple, left_child_->GetOutputSchema());
     hht_.Insert(value, tuple);
+    // ++cnt;
   }
+  // std::cout << "Left Cnt: " << cnt << std::endl;
   // Probe
+  // cnt=0;
   while (right_child_->Next(&tuple, &rid)) {
-
+    // ++cnt;
     hash_key = plan_->RightJoinKeyExpression().Evaluate(&tuple, right_child_->GetOutputSchema()); 
     if (hht_.Count(hash_key) == 0) {
       continue;
@@ -69,6 +73,7 @@ void HashJoinExecutor::Init() {
       }
     }
   }
+  // std::cout << "Right Cnt: " << cnt <<std::endl;
   // LeftJoin: Unmatched
   if (plan_->GetJoinType() == JoinType::LEFT) {
     assert(!reordered);
