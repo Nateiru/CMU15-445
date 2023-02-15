@@ -21,8 +21,10 @@ namespace bustub {
 HashJoinExecutor::HashJoinExecutor(ExecutorContext *exec_ctx, const HashJoinPlanNode *plan,
                                    std::unique_ptr<AbstractExecutor> &&left_child,
                                    std::unique_ptr<AbstractExecutor> &&right_child)
-    : AbstractExecutor(exec_ctx), plan_(plan), left_child_(std::move(left_child)), right_child_(std::move(right_child)){
-
+    : AbstractExecutor(exec_ctx),
+      plan_(plan),
+      left_child_(std::move(left_child)),
+      right_child_(std::move(right_child)) {
   if (!(plan->GetJoinType() == JoinType::LEFT || plan->GetJoinType() == JoinType::INNER)) {
     // Note for 2022 Fall: You ONLY need to implement left join and inner join.
     throw bustub::NotImplementedException(fmt::format("join type {} not supported", plan->GetJoinType()));
@@ -51,23 +53,23 @@ void HashJoinExecutor::Init() {
   // cnt=0;
   while (right_child_->Next(&tuple, &rid)) {
     // ++cnt;
-    hash_key = plan_->RightJoinKeyExpression().Evaluate(&tuple, right_child_->GetOutputSchema()); 
+    hash_key = plan_->RightJoinKeyExpression().Evaluate(&tuple, right_child_->GetOutputSchema());
     if (hht_.Count(hash_key) == 0) {
       continue;
-    } 
+    }
     assert(hht_.Count(hash_key) > 0);
 
     auto left_tuples = hht_.Scan(hash_key);
     auto right_values = GetValuesFromTuple(&tuple, &right_child_->GetOutputSchema());
-    for (const auto & left_tuple : left_tuples) {
-      auto left_values = GetValuesFromTuple(&left_tuple, &left_child_->GetOutputSchema()); 
+    for (const auto &left_tuple : left_tuples) {
+      auto left_values = GetValuesFromTuple(&left_tuple, &left_child_->GetOutputSchema());
       if (reordered) {
         assert(plan_->GetJoinType() == JoinType::INNER);
         size_t right_size = right_values.size();
         right_values.insert(right_values.end(), left_values.begin(), left_values.end());
         ret_tuples_.emplace_back(Tuple(right_values, &GetOutputSchema()));
         right_values.erase(right_values.begin() + right_size, right_values.end());
-      }else {
+      } else {
         left_values.insert(left_values.end(), right_values.begin(), right_values.end());
         ret_tuples_.emplace_back(Tuple(left_values, &GetOutputSchema()));
       }
@@ -85,8 +87,8 @@ void HashJoinExecutor::Init() {
     for (const Column &col : right_child_->GetOutputSchema().GetColumns()) {
       right_values.emplace_back(ValueFactory::GetNullValueByType(col.GetType()));
     }
-    for (const auto & left_tuple : left_tuples) {
-      auto left_values = GetValuesFromTuple(&left_tuple, &left_child_->GetOutputSchema()); 
+    for (const auto &left_tuple : left_tuples) {
+      auto left_values = GetValuesFromTuple(&left_tuple, &left_child_->GetOutputSchema());
       left_values.insert(left_values.end(), right_values.begin(), right_values.end());
       ret_tuples_.emplace_back(Tuple(left_values, &GetOutputSchema()));
     }
@@ -108,7 +110,7 @@ auto HashJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     ret_tuples_.pop_back();
     *rid = tuple->GetRid();
     return true;
-  } 
+  }
   return false;
 }
 

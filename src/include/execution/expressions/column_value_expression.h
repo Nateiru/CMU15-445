@@ -17,9 +17,9 @@
 #include <vector>
 
 #include "catalog/schema.h"
+#include "common/logger.h"
 #include "execution/expressions/abstract_expression.h"
 #include "storage/table/tuple.h"
-#include "common/logger.h"
 
 namespace bustub {
 /**

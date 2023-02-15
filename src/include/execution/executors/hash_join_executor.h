@@ -13,15 +13,15 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "common/util/hash_util.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/hash_join_plan.h"
 #include "storage/table/tuple.h"
-#include "common/util/hash_util.h"
-
 
 namespace bustub {
 struct HashJoinKey {
@@ -32,15 +32,13 @@ struct HashJoinKey {
 };
 
 struct HashJoinValue {
-  HashJoinValue () {
-    std::vector<Tuple>().swap(tuples_);
-  }
+  HashJoinValue() { std::vector<Tuple>().swap(tuples_); }
   std::vector<Tuple> tuples_;
 };
-}   // namespace bustub
+}  // namespace bustub
 
-namespace std{
-  
+namespace std {
+
 /** Implements std::hash on HashJoinKey */
 template <>
 struct hash<bustub::HashJoinKey> {
@@ -91,25 +89,25 @@ class SimpleHashJoinHashTable {
     return ht_[hash_join_key].tuples_.size();
   }
   /**
-   * Scan the hash table in hash_join_key 
+   * Scan the hash table in hash_join_key
    */
   auto Scan(const Value &value) -> std::vector<Tuple> {
     HashJoinKey hash_join_key{value};
     std::vector<Tuple> ret;
     ret.reserve(ht_[hash_join_key].tuples_.size());
-    for (auto it : ht_[hash_join_key].tuples_) {
+    for (const auto &it : ht_[hash_join_key].tuples_) {
       ret.emplace_back(it);
     }
     matched_[hash_join_key] = true;
     return ret;
   }
   /**
-   * Unmatched the hash table in hash_join_key 
+   * Unmatched the hash table in hash_join_key
    */
   auto UnMatched() -> std::vector<Tuple> {
     std::vector<Tuple> ret;
     for (const auto &it : ht_) {
-      if (!matched_.count(it.first)) {
+      if (matched_.count(it.first) == 0U) {
         ret.insert(ret.begin(), it.second.tuples_.begin(), it.second.tuples_.end());
       }
     }

@@ -14,27 +14,26 @@ void TopNExecutor::Init() {
   while (child_executor_->Next(&tuple, &rid)) {
     sorted_tuples_.emplace_back(tuple);
   }
-  std::sort(sorted_tuples_.begin(), sorted_tuples_.end(),
-            [this](const Tuple &a, const Tuple &b) {
-              for (auto [order_by_type, expr] : plan_->GetOrderBy()) {
-                const Value x = expr->Evaluate(&a, child_executor_->GetOutputSchema());
-                const Value y = expr->Evaluate(&b, child_executor_->GetOutputSchema());
-                if (x.CompareEquals(y) == CmpBool::CmpTrue) {
-                  continue;
-                }
-                switch (order_by_type) {
-                  case OrderByType::INVALID:
-                  case OrderByType::ASC:
-                  case OrderByType::DEFAULT:
-                    return x.CompareLessThan(y) == CmpBool::CmpTrue;
-                    break;
-                  case OrderByType::DESC:
-                    return x.CompareGreaterThan(y) == CmpBool::CmpTrue;
-                    break;
-                }
-              }
-              UNREACHABLE("doesn't support duplicate key");
-            });
+  std::sort(sorted_tuples_.begin(), sorted_tuples_.end(), [this](const Tuple &a, const Tuple &b) {
+    for (auto [order_by_type, expr] : plan_->GetOrderBy()) {
+      const Value x = expr->Evaluate(&a, child_executor_->GetOutputSchema());
+      const Value y = expr->Evaluate(&b, child_executor_->GetOutputSchema());
+      if (x.CompareEquals(y) == CmpBool::CmpTrue) {
+        continue;
+      }
+      switch (order_by_type) {
+        case OrderByType::INVALID:
+        case OrderByType::ASC:
+        case OrderByType::DEFAULT:
+          return x.CompareLessThan(y) == CmpBool::CmpTrue;
+          break;
+        case OrderByType::DESC:
+          return x.CompareGreaterThan(y) == CmpBool::CmpTrue;
+          break;
+      }
+    }
+    UNREACHABLE("doesn't support duplicate key");
+  });
   while (sorted_tuples_.size() > plan_->GetN()) {
     sorted_tuples_.pop_back();
   }
