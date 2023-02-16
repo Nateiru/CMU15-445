@@ -273,6 +273,10 @@ class LockManager {
 
   void BookKeeping(bool insert, Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID rid = RID{});
 
+  auto CheckTableLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool;
+  
+  void DeleteInQueue(Transaction *txn, std::shared_ptr<LockRequestQueue> &lock_request_queue);
+
   /*** Graph API ***/
 
   /**

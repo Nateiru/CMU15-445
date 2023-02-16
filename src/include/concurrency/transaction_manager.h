@@ -128,7 +128,8 @@ class TransactionManager {
         lock_manager_->UnlockRow(txn, oid, rid);
       }
     }
-  
+
+
     for (auto oid : table_lock_set) {
       lock_manager_->UnlockTable(txn, oid);
     }
