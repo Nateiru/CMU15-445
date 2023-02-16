@@ -128,10 +128,11 @@ class TransactionManager {
         lock_manager_->UnlockRow(txn, oid, rid);
       }
     }
-
+  
     for (auto oid : table_lock_set) {
       lock_manager_->UnlockTable(txn, oid);
     }
+    
   }
 
   std::atomic<txn_id_t> next_txn_id_{0};

@@ -264,6 +264,15 @@ class LockManager {
    */
   auto UnlockRow(Transaction *txn, const table_oid_t &oid, const RID &rid) -> bool;
 
+  //============================
+  auto CheckUpgrade(const LockMode &hold, const LockMode &want) -> bool;
+
+  auto CheckCompatibility(const LockMode &hold, const LockMode &want) -> bool;
+
+  auto GrantLock(Transaction *txn, std::shared_ptr<LockRequestQueue> &lock_request_queue) -> bool;
+
+  void BookKeeping(bool insert, Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID rid = RID{});
+
   /*** Graph API ***/
 
   /**

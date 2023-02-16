@@ -104,14 +104,14 @@ class IndexWriteRecord {
  * Reason to a transaction abortion
  */
 enum class AbortReason {
-  LOCK_ON_SHRINKING,
-  UPGRADE_CONFLICT,
-  LOCK_SHARED_ON_READ_UNCOMMITTED,
-  TABLE_LOCK_NOT_PRESENT,
-  ATTEMPTED_INTENTION_LOCK_ON_ROW,
-  TABLE_UNLOCKED_BEFORE_UNLOCKING_ROWS,
-  INCOMPATIBLE_UPGRADE,
-  ATTEMPTED_UNLOCK_BUT_NO_LOCK_HELD
+  LOCK_ON_SHRINKING,                       // lock on shrinking
+  UPGRADE_CONFLICT,                        // upgrade conflict
+  LOCK_SHARED_ON_READ_UNCOMMITTED,         // lock share on read uncommitted
+  TABLE_LOCK_NOT_PRESENT,                  // table lock no present
+  ATTEMPTED_INTENTION_LOCK_ON_ROW,         // attempted intention lock on row
+  TABLE_UNLOCKED_BEFORE_UNLOCKING_ROWS,    // table unlocked before unlocking rows
+  INCOMPATIBLE_UPGRADE,                    // incompatible upgrade
+  ATTEMPTED_UNLOCK_BUT_NO_LOCK_HELD        // attempted unlock but no lock held
 };
 
 /**
