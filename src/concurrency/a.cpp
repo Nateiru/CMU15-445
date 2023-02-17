@@ -132,6 +132,28 @@ auto LockManager::CheckUpgrade(const LockMode &hold, const LockMode &want) -> bo
   return false;
 }
 
+auto LockManager::CheckOneCompatibility(LockMode hold, LockMode want) const -> bool {
+  if (hold == LockMode::INTENTION_SHARED) {
+    return want == LockMode::INTENTION_SHARED    || \
+           want == LockMode::INTENTION_EXCLUSIVE || \
+           want == LockMode::SHARED              || \
+           want == LockMode::SHARED_INTENTION_EXCLUSIVE;
+  }
+  if (hold == LockMode::INTENTION_EXCLUSIVE) {
+    return want == LockMode::INTENTION_SHARED    || \
+           want == LockMode::INTENTION_EXCLUSIVE; 
+  }
+  if (hold == LockMode::SHARED) {
+    return want == LockMode::INTENTION_SHARED    || \
+           want == LockMode::SHARED;
+  }
+  if (hold == LockMode::SHARED_INTENTION_EXCLUSIVE) {
+    return want == LockMode::INTENTION_SHARED;
+  }
+  return false;
+}
+
+
 auto LockManager::GrantLock(Transaction *txn, std::shared_ptr<LockManager::LockRequestQueue> &lock_request_queue) -> bool {
   if (txn->GetState() == TransactionState::ABORTED) {
     return false;
@@ -191,29 +213,6 @@ auto LockManager::CheckTableLock(Transaction *txn, LockMode lock_mode, const tab
          txn->IsTableSharedIntentionExclusiveLocked(oid); 
 }
 
-// auto LockManager::CheckOneCompatibility(LockMode hold, LockMode want) const -> bool {
-//   if (hold == LockMode::INTENTION_SHARED) {
-//     return want == LockMode::INTENTION_SHARED    || \
-//            want == LockMode::INTENTION_EXCLUSIVE || \
-//            want == LockMode::SHARED              || \
-//            want == LockMode::SHARED_INTENTION_EXCLUSIVE;
-//   }
-//   if (hold == LockMode::INTENTION_EXCLUSIVE) {
-//     return want == LockMode::INTENTION_SHARED    || \
-//            want == LockMode::INTENTION_EXCLUSIVE; 
-//   }
-//   if (hold == LockMode::SHARED) {
-//     return want == LockMode::INTENTION_SHARED    || \
-//            want == LockMode::SHARED;
-//   }
-//   if (hold == LockMode::SHARED_INTENTION_EXCLUSIVE) {
-//     return want == LockMode::INTENTION_SHARED;
-//   }
-//   return false;
-// }
-
-//===================================================================================
-
 auto LockManager::GetLockSet(Transaction *txn, LockMode lock_mode) const
     -> std::shared_ptr<std::unordered_set<table_oid_t>> {
   std::shared_ptr<std::unordered_set<table_oid_t>> lock_set;
@@ -271,39 +270,11 @@ auto LockManager::GetTableLockMap(Transaction *txn, LockMode lock_mode) const
   return lock_map;
 }
 
-auto LockManager::CheckOneCompatibility(LockMode org_lock_mode, LockMode add_lock_mode) const -> bool {
-  if (org_lock_mode == LockMode::EXCLUSIVE) {
-    return false;
-  }
-  if (org_lock_mode == LockMode::SHARED_INTENTION_EXCLUSIVE) {
-    if (add_lock_mode != LockMode::INTENTION_SHARED) {
-      return false;
-    }
-  }
-  if (org_lock_mode == LockMode::SHARED) {
-    if (add_lock_mode != LockMode::INTENTION_SHARED && add_lock_mode != LockMode::SHARED) {
-      return false;
-    }
-  }
-  if (org_lock_mode == LockMode::INTENTION_EXCLUSIVE) {
-    if (add_lock_mode != LockMode::INTENTION_SHARED && add_lock_mode != LockMode::INTENTION_EXCLUSIVE) {
-      return false;
-    }
-  }
-  if (org_lock_mode == LockMode::INTENTION_SHARED) {
-    if (add_lock_mode == LockMode::EXCLUSIVE) {
-      return false;
-    }
-  }
-  return true;
-}
-
 auto LockManager::CheckCompatibility(Transaction *txn, LockMode lock_mode,
                                      std::list<LockRequest *> &target_lrq_queue) const -> bool {
-  if (txn->GetState() == TransactionState::ABORTED) {
-    return true;
-  }
-
+  // if (txn->GetState() == TransactionState::ABORTED) {
+  //   return true;
+  // }
   // IS IX S SIX S
   bool exist_locks[5] = {false, false, false, false, false};
   for (auto *lr : target_lrq_queue) {
@@ -368,6 +339,108 @@ auto LockManager::CheckCompatibility(Transaction *txn, LockMode lock_mode,
   return true;
 }
 
+// auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool {
+//   /** 1. 检查 txn 的状态。*/
+
+//   if (txn->GetState() == TransactionState::ABORTED) {
+//     return false;
+//   }
+//   if (txn->GetIsolationLevel() == IsolationLevel::REPEATABLE_READ) {
+//     if (txn->GetState() == TransactionState::SHRINKING) {
+//       txn->SetState(TransactionState::ABORTED);
+//       throw TransactionAbortException(txn->GetTransactionId(), AbortReason::LOCK_ON_SHRINKING);
+//     }
+//   } else if (txn->GetIsolationLevel() == IsolationLevel::READ_COMMITTED) {
+//     if (txn->GetState() == TransactionState::SHRINKING) {
+//       if (lock_mode != LockMode::INTENTION_SHARED && lock_mode != LockMode::SHARED) {
+//         txn->SetState(TransactionState::ABORTED);
+//         throw TransactionAbortException(txn->GetTransactionId(), AbortReason::LOCK_ON_SHRINKING);
+//       }
+//     }
+//   } else if (txn->GetIsolationLevel() == IsolationLevel::READ_UNCOMMITTED) {
+//     if (lock_mode != LockMode::INTENTION_EXCLUSIVE && lock_mode != LockMode::EXCLUSIVE) {
+//       txn->SetState(TransactionState::ABORTED);
+//       throw TransactionAbortException(txn->GetTransactionId(), AbortReason::LOCK_SHARED_ON_READ_UNCOMMITTED);
+//     }
+//     if (txn->GetState() == TransactionState::SHRINKING) {
+//       txn->SetState(TransactionState::ABORTED);
+//       throw TransactionAbortException(txn->GetTransactionId(), AbortReason::LOCK_ON_SHRINKING);
+//     }
+//   }
+//   /** 2. 获取 table 对应的 lock request queue。*/
+
+//   table_lock_map_latch_.lock();
+//   // 若 queue 不存在则创建。
+//   if (table_lock_map_.find(oid) == table_lock_map_.end()) {
+//     table_lock_map_.emplace(oid, std::make_shared<LockRequestQueue>());
+//   }
+//   auto &lock_request_queue = table_lock_map_[oid];
+//   // 获取 queue 后 立即可以释放 table
+//   table_lock_map_latch_.unlock();
+//   std::unique_lock<std::mutex> lock(lock_request_queue->latch_);
+//   auto &request_queue = lock_request_queue->request_queue_;
+//   /** 3. 检查此锁请求是否为一次锁升级。*/
+//   for (auto it = request_queue.begin(); it != request_queue.end(); ++it) {
+//     auto &request = *it;
+//     if (request->txn_id_ == txn->GetTransactionId()) {
+//       // std::cout << "Opps! Upgrade: "<< request->txn_id_ <<std::endl;
+//       BUSTUB_ENSURE(request->granted_ == true, "try requesting another lock means that it has been granted a lock!");
+//       // 判断当前资源上是否有另一个事务正在尝试升级
+//       if (lock_request_queue->upgrading_ != INVALID_TXN_ID) {
+//         txn->SetState(TransactionState::ABORTED);
+//         throw TransactionAbortException(txn->GetTransactionId(), AbortReason::UPGRADE_CONFLICT);
+//       }
+//       // 判断锁的类型是否相同 相同直接返回
+//       if (request->lock_mode_ == lock_mode) {
+//         return true;
+//       }
+//       // 尝试升级
+//       // 1. 判断是否可以升级
+//       if (!CheckUpgrade(request->lock_mode_, lock_mode)) {
+//         txn->SetState(TransactionState::ABORTED);
+//         throw TransactionAbortException(txn->GetTransactionId(), AbortReason::INCOMPATIBLE_UPGRADE);
+//         return false;
+//       }
+//       // 2. 释放当前锁
+//       BookKeeping(false, txn, request->lock_mode_, request->oid_);
+//       request_queue.erase(it);
+//       delete request;
+//       lock_request_queue->upgrading_ = txn->GetTransactionId();
+//       // lock_request_queue->cv_.notify_all();
+//       // 3. 插入新的位置
+//       auto insert_pos = std::find_if(request_queue.begin(), request_queue.end(),
+//                                      [&](const LockRequest *lr) { return !lr->granted_; });
+//       request_queue.insert(insert_pos, new LockRequest(txn->GetTransactionId(), lock_mode, oid)); 
+//       // 4. 等待直到新锁被授予。
+//       while ((txn->GetState() != TransactionState::ABORTED) && !GrantLock(txn, lock_request_queue)) {
+//         lock_request_queue->cv_.wait(lock);
+//       }
+//       if (txn->GetState() == TransactionState::ABORTED) {
+//         DeleteInQueue(txn, lock_request_queue);
+//         return false;
+//       }
+//       txn->SetState(TransactionState::GROWING);
+//       BookKeeping(true, txn, lock_mode, oid);
+//       return true;
+//     }
+//   }
+//   // std::cout << "Lock Table" <<std::endl; 
+//   /** 4. 将锁请求加入请求队列（此时无锁升级）。*/
+  
+//   lock_request_queue->request_queue_.emplace_back(new LockRequest(txn->GetTransactionId(), lock_mode, oid));
+//   assert(lock_request_queue->request_queue_.back()->lock_mode_ == lock_mode);
+//   /** 5. 尝试获取锁。*/
+//   while ((txn->GetState() != TransactionState::ABORTED) && !GrantLock(txn, lock_request_queue)) {
+//     lock_request_queue->cv_.wait(lock);
+//   }
+//   if (txn->GetState() == TransactionState::ABORTED) {
+//     DeleteInQueue(txn, lock_request_queue);
+//     return false;
+//   }
+//   txn->SetState(TransactionState::GROWING);
+//   BookKeeping(true, txn, lock_mode, oid);
+//   return true;
+// }
 auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool {
   if (txn->GetState() == TransactionState::ABORTED) {
     return false;
@@ -495,7 +568,8 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
       new_it = target_lrq_queue.insert(insert_pos, new_request);
     }
 
-    target_lrq->cv_.wait(lk, [&]() { return CheckCompatibility(txn, lock_mode, target_lrq_queue); });
+    target_lrq->cv_.wait(lk, [&]() { return (txn->GetState() == TransactionState::ABORTED) || 
+                                             CheckCompatibility(txn, lock_mode, target_lrq_queue); });
     if (is_update) {
       target_lrq->upgrading_ = INVALID_PAGE_ID;
     }
@@ -514,7 +588,6 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
 
   return true;
 }
-
 auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool {
   LockMode org_lock_mode;
   if (txn->IsTableSharedLocked(oid)) {
@@ -572,6 +645,53 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
 
   return true;
 }
+
+// auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool {
+//   // row 锁必须全部释放
+//   if ((txn->GetSharedRowLockSet()->count(oid) && !txn->GetSharedRowLockSet()->at(oid).empty()) || \
+//       (txn->GetExclusiveRowLockSet()->count(oid) && !txn->GetExclusiveRowLockSet()->at(oid).empty())) {
+//     txn->SetState(TransactionState::ABORTED);
+//     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::TABLE_UNLOCKED_BEFORE_UNLOCKING_ROWS);
+//   }
+//   table_lock_map_latch_.lock();
+//   // 若 queue 不存在。
+//   if (!table_lock_map_.count(oid)) {
+//     txn->SetState(TransactionState::ABORTED);
+//     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::ATTEMPTED_UNLOCK_BUT_NO_LOCK_HELD);
+//     return false;
+//   }
+//   auto &lock_request_queue = table_lock_map_[oid];
+//   // 获取 queue 后 立即可以释放 table
+//   table_lock_map_latch_.unlock();
+//   std::unique_lock<std::mutex> lock(lock_request_queue->latch_);
+//   auto &request_queue = lock_request_queue->request_queue_;
+//   auto remove_it = std::find_if(request_queue.begin(), request_queue.end(),
+//                                      [&](const LockRequest *lr) { return lr->txn_id_ == txn->GetTransactionId(); });
+//   auto request = *remove_it;
+//   // 释放锁
+//   request_queue.erase(remove_it);
+//   BookKeeping(false, txn, request->lock_mode_, oid);
+//   lock_request_queue->cv_.notify_all();
+//   auto org_lock_mode = request->lock_mode_;
+//   delete request;
+//   // 状态变化
+//   if (org_lock_mode == LockMode::EXCLUSIVE) {
+//     if (txn->GetState() == TransactionState::GROWING) {
+//       txn->SetState(TransactionState::SHRINKING);
+//     }
+//   } else if (org_lock_mode == LockMode::SHARED) {
+//     BUSTUB_ASSERT(txn->GetIsolationLevel() != IsolationLevel::READ_UNCOMMITTED,
+//                   "Unlock S locks under READ_UNCOMMITTED is undefined behaviour.");
+//     if (txn->GetIsolationLevel() == IsolationLevel::REPEATABLE_READ) {
+//       if (txn->GetState() == TransactionState::GROWING) {
+//         txn->SetState(TransactionState::SHRINKING);
+//       }
+//     }
+//   }
+//   return true;
+    
+// }
+
 
 auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool {
   if (txn->GetState() == TransactionState::ABORTED) {
@@ -809,3 +929,4 @@ void LockManager::RunCycleDetection() {
 }
 
 }  // namespace bustu
+
