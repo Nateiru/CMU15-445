@@ -154,9 +154,29 @@ auto LockManager::CheckCompatibility(const LockMode &hold, const LockMode &want)
 }
 
 auto LockManager::GrantLock(Transaction *txn, std::shared_ptr<LockManager::LockRequestQueue> &lock_request_queue) -> bool {
-  if (txn->GetState() == TransactionState::ABORTED) {
-    return false;
-  }
+  // std::cout << "Want: " << txn->GetTransactionId() << std::endl;
+  // std::cout <<"Wait List: { ";
+  // for (auto request : lock_request_queue->request_queue_) {
+  //   std:: cout << request->txn_id_ << " ";
+  // }
+  // std::cout << "}\n" << std::endl;
+
+  // std::cout <<"Lock List: { ";
+  // for (auto request : lock_request_queue->request_queue_) {
+  //   std:: cout << (int)request->lock_mode_ << " ";
+  // }
+  // std::cout << "}\n" << std::endl;
+
+  // std::cout <<"[ ";
+  // for (auto request : lock_request_queue->request_queue_) {
+  //   if (request->granted_ == false) {
+  //     continue;
+  //   }
+  //   std:: cout << request->txn_id_ << " ";  
+  // }
+  // std::cout << "]\n" << std::endl;
+  // ===================================
+
   LockRequest *lock_request{nullptr};
   for (auto request : lock_request_queue->request_queue_) {
     if (txn->GetTransactionId() == request->txn_id_) {
@@ -165,26 +185,23 @@ auto LockManager::GrantLock(Transaction *txn, std::shared_ptr<LockManager::LockR
     }
   }
   assert(lock_request != nullptr);
-  int flag = -1;
+  // std::cout << "Want Lock Type: " << (int) lock_request->lock_mode_ << std::endl; 
   for (const auto & request : lock_request_queue->request_queue_) {
-    if (request->granted_ ) {
-      flag = 1;
+    if (request->granted_) {
       if (!CheckCompatibility(request->lock_mode_, lock_request->lock_mode_)) {
+        // std::cout << "Reason: " << (int) request->lock_mode_ << " != " << (int) lock_request->lock_mode_  << std::endl;
+        // std::cout << "Fail Grant: " << txn->GetTransactionId() << std::endl;
         return false;
       }
     }
   }
   // 说明全部兼容
-  if (flag != -1) {
-    lock_request->granted_ = true;
-    // std::cout << "OK Compatibility!!!" <<std::endl;
-    return true;
-  }
-  // 否则说明不存在已经 granted 的请求
   // 升级优先级最高
   if (lock_request_queue->upgrading_ != INVALID_TXN_ID) {
     if (lock_request_queue->upgrading_ == txn->GetTransactionId()) {
       lock_request->granted_ = true;
+      lock_request_queue->upgrading_ = INVALID_TXN_ID;
+      // std::cout << "Success Grade And Grant: " << txn->GetTransactionId() << std::endl;
       return true;
     }
     return false;
@@ -192,19 +209,22 @@ auto LockManager::GrantLock(Transaction *txn, std::shared_ptr<LockManager::LockR
   // FIFO
   // 当前请求是第一个 waiting 状态的请求 
   // 前面还存在其他 waiting 请求，则要判断当前请求是否前面的 waiting 请求兼容。
-  bool matched = true;
   for (const auto & request : lock_request_queue->request_queue_) {
     if (request->txn_id_ == txn->GetTransactionId()) {
       assert(request->granted_ == false);
-      if (matched) {
-        lock_request->granted_ = true;
-        std::cout <<txn->GetTransactionId() << " Get Lock" <<std::endl;
-        return true;  
-      }
-      return false;
+      lock_request->granted_ = true;
+      // std::cout <<txn->GetTransactionId() << " Get Lock" <<std::endl;
+      return true;  
     }
     if (!request->granted_ ) {
-      matched &= CheckCompatibility(request->lock_mode_, lock_request->lock_mode_);
+      if (!CheckCompatibility(request->lock_mode_, lock_request->lock_mode_)) {
+        return false;
+      }
+      for (const auto & req : lock_request_queue->request_queue_) {
+        if (req->granted_ && !CheckCompatibility(req->lock_mode_, request->lock_mode_)) {
+          return false;
+        }
+      }
     }
   }
   assert(0);
@@ -233,7 +253,7 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
   // 检查当前事务是否被终止
   if (txn->GetState() == TransactionState::ABORTED) {
     std::cout << "transaction has been aborted!" << std::endl;
-    // BUSTUB_ENSURE(0, "transaction has been aborted!");
+    assert(0);
     return false;
   }
   // 事务的隔离级别是 READ_UNCOMITTED，只能加 X 和 IX 锁
@@ -272,23 +292,19 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
   /** 2. 获取 table 对应的 lock request queue。*/
 
   table_lock_map_latch_.lock();
-  // std::cout << "Begin Fetch Table Latch: " << oid << std::endl;
   // 若 queue 不存在则创建。
   if (!table_lock_map_.count(oid)) {
     table_lock_map_[oid] = std::make_shared<LockRequestQueue>();
   }
   auto &lock_request_queue = table_lock_map_[oid];
   // 获取 queue 后 立即可以释放 table
-  // std::cout << "End Fetch Table Latch: " << oid << std::endl;
   table_lock_map_latch_.unlock();
-  // lock_request_queue->latch_.lock();
   std::unique_lock<std::mutex> lock(lock_request_queue->latch_);
-  // std::cout << "++++++++++++++++++++++++++"<< std::endl;
   auto &request_queue = lock_request_queue->request_queue_;
   /** 3. 检查此锁请求是否为一次锁升级。*/
   for (auto & request : request_queue) {
     if (request->txn_id_ == txn->GetTransactionId()) {
-      // std::cout << "Opps! Upgrade!!!"<<std::endl;
+      // std::cout << "Opps! Upgrade: "<< request->txn_id_ <<std::endl;
       BUSTUB_ENSURE(request->granted_ == true, "try requesting another lock means that it has been granted a lock!");
       // 判断当前资源上是否有另一个事务正在尝试升级
       if (lock_request_queue->upgrading_ != INVALID_TXN_ID) {
@@ -331,7 +347,7 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
   /** 4. 将锁请求加入请求队列（此时无锁升级）。*/
   
   lock_request_queue->request_queue_.emplace_back(new LockRequest(txn->GetTransactionId(), lock_mode, oid));
-  std::cout << "Success Emplace_back: " << txn->GetTransactionId() << std::endl;
+  assert(lock_request_queue->request_queue_.back()->lock_mode_ == lock_mode);
   /** 5. 尝试获取锁。*/
   while ((txn->GetState() != TransactionState::ABORTED) && !GrantLock(txn, lock_request_queue)) {
     lock_request_queue->cv_.wait(lock);
@@ -340,7 +356,6 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
     DeleteInQueue(txn, lock_request_queue);
     return false;
   }
-  std::cout << "Success Lock: " << oid << std::endl;
   txn->SetState(TransactionState::GROWING);
   BookKeeping(true, txn, lock_mode, oid);
   return true;
@@ -371,7 +386,7 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
   // std::cout << "queue size: " << request_queue.size() << std::endl; 
   for (auto it = request_queue.begin(); it != request_queue.end(); ++it) {
     auto request = *it;
-    // // std::cout << request->txn_id_ <<std::endl;
+    // std::cout <<"Unlock: " << request->txn_id_ <<std::endl;
     if (request->txn_id_ == txn->GetTransactionId() && request->granted_) {
       // 释放锁
       request_queue.erase(it);
@@ -481,7 +496,6 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
     row_lock_map_[rid] = std::make_shared<LockRequestQueue>();
   }
   auto &lock_request_queue = row_lock_map_[rid];
-
   row_lock_map_latch_.unlock();
 
   std::unique_lock<std::mutex> lock(lock_request_queue->latch_);
@@ -515,6 +529,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
       request->granted_ = false;
       request->lock_mode_ = lock_mode;
       request->oid_ = oid;
+      request->rid_ = rid;
       lock_request_queue->upgrading_ = request->txn_id_;
       lock_request_queue->cv_.notify_all();
       // 3. 等待直到新锁被授予。
@@ -522,6 +537,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
         lock_request_queue->cv_.wait(lock);
       }
       if (txn->GetState() == TransactionState::ABORTED) {
+        DeleteInQueue(txn, lock_request_queue);
         return false;
       }
       txn->SetState(TransactionState::GROWING);
@@ -539,6 +555,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
     lock_request_queue->cv_.wait(lock);
   }
   if (txn->GetState() == TransactionState::ABORTED) {
+    DeleteInQueue(txn, lock_request_queue);
     return false;
   }
   txn->SetState(TransactionState::GROWING);
