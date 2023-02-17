@@ -158,7 +158,7 @@ void RowLockTest1() {
   table_oid_t oid = 0;
   RID rid{0, 0};
 
-  int num_txns = 4;
+  int num_txns = 10;
   std::vector<Transaction *> txns;
   for (int i = 0; i < num_txns; i++) {
     txns.push_back(txn_mgr.Begin());
@@ -172,10 +172,10 @@ void RowLockTest1() {
     res = lock_mgr.LockTable(txns[txn_id], LockManager::LockMode::SHARED, oid);
     EXPECT_TRUE(res);
     CheckGrowing(txns[txn_id]);
-
     res = lock_mgr.LockRow(txns[txn_id], LockManager::LockMode::SHARED, oid, rid);
     EXPECT_TRUE(res);
     CheckGrowing(txns[txn_id]);
+
     /** Lock set should be updated */
     ASSERT_EQ(true, txns[txn_id]->IsRowSharedLocked(oid, rid));
 
@@ -698,6 +698,165 @@ TEST(LockManagerTest, CompatibilityTest3) {
   delete txn0;
   delete txn1;
   delete txn2;
+}
+
+// --- Real tests ---
+// Basic shared lock test under REPEATABLE_READ
+void BasicTest1() {
+  LockManager lock_mgr{};
+  TransactionManager txn_mgr{&lock_mgr};
+
+  std::vector<table_oid_t> oids;
+  std::vector<Transaction *> txns;
+  int num_rids = 10;
+  for (int i = 0; i < num_rids; i++) {
+    oids.push_back((table_oid_t)i);
+    txns.push_back(txn_mgr.Begin());
+    EXPECT_EQ(i, txns[i]->GetTransactionId());
+  }
+  // test
+
+  auto task = [&](int txn_id) {
+    bool res;
+    for (const auto &oid : oids) {
+      res = lock_mgr.LockTable(txns[txn_id], LockManager::LockMode::SHARED, oid);
+      EXPECT_TRUE(res);
+      CheckGrowing(txns[txn_id]);
+    }
+    for (const auto &oid : oids) {
+      res = lock_mgr.UnlockTable(txns[txn_id], oid);
+      EXPECT_TRUE(res);
+      CheckShrinking(txns[txn_id]);
+    }
+    txn_mgr.Commit(txns[txn_id]);
+    CheckCommitted(txns[txn_id]);
+  };
+  std::vector<std::thread> threads;
+  threads.reserve(num_rids);
+
+  for (int i = 0; i < num_rids; i++) {
+    threads.emplace_back(std::thread{task, i});
+  }
+
+  for (int i = 0; i < num_rids; i++) {
+    threads[i].join();
+  }
+
+  for (int i = 0; i < num_rids; i++) {
+    delete txns[i];
+  }
+}
+
+// Basic shared lock test under READ_COMMITTED
+void BasicTest2() {
+  LockManager lock_mgr{};
+  TransactionManager txn_mgr{&lock_mgr};
+
+  std::vector<table_oid_t> oids;
+  std::vector<Transaction *> txns;
+  int num_rids = 10;
+  for (int i = 0; i < num_rids; i++) {
+    oids.push_back((table_oid_t)i);
+    txns.push_back(txn_mgr.Begin(nullptr, IsolationLevel::READ_COMMITTED));
+    EXPECT_EQ(i, txns[i]->GetTransactionId());
+  }
+  // test
+
+  auto task = [&](int txn_id) {
+    bool res;
+    for (const auto &oid : oids) {
+      res = lock_mgr.LockTable(txns[txn_id], LockManager::LockMode::SHARED, oid);
+      EXPECT_TRUE(res);
+      CheckGrowing(txns[txn_id]);
+    }
+    for (const auto &oid : oids) {
+      res = lock_mgr.UnlockTable(txns[txn_id], oid);
+      EXPECT_TRUE(res);
+      CheckGrowing(txns[txn_id]);
+    }
+    txn_mgr.Commit(txns[txn_id]);
+    CheckCommitted(txns[txn_id]);
+  };
+  
+  std::vector<std::thread> threads;
+  threads.reserve(num_rids);
+
+  for (int i = 0; i < num_rids; i++) {
+    threads.emplace_back(std::thread{task, i});
+  }
+
+  for (int i = 0; i < num_rids; i++) {
+    threads[i].join();
+  }
+
+  for (int i = 0; i < num_rids; i++) {
+    delete txns[i];
+  }
+}
+
+// Basic shared lock test under READ_UNCOMMITTED
+void BasicTest3() {
+  LockManager lock_mgr{};
+  TransactionManager txn_mgr{&lock_mgr};
+
+  std::vector<table_oid_t> oids;
+  std::vector<Transaction *> txns;
+  int num_rids = 10;
+  for (int i = 0; i < num_rids; i++) {
+    oids.push_back((table_oid_t)i);
+    txns.push_back(txn_mgr.Begin(nullptr, IsolationLevel::READ_UNCOMMITTED));
+    EXPECT_EQ(i, txns[i]->GetTransactionId());
+  }
+  // test
+  
+  auto task = [&](int txn_id) {
+    for (const auto &oid : oids) {
+      try {
+        lock_mgr.LockTable(txns[txn_id], LockManager::LockMode::SHARED, oid);
+      } catch (TransactionAbortException &e) {
+        CheckAborted(txns[txn_id]);
+      }
+    }
+  };
+  
+
+  std::vector<std::thread> threads;
+  threads.reserve(num_rids);
+
+  for (int i = 0; i < num_rids; i++) {
+    threads.emplace_back(std::thread{task, i});
+  }
+
+  for (int i = 0; i < num_rids; i++) {
+    threads[i].join();
+  }
+
+  for (int i = 0; i < num_rids; i++) {
+    delete txns[i];
+  }
+}
+
+// Correct case
+
+/****************************
+ * Basic Tests (15 pts)
+ ****************************/
+
+const size_t NUM_ITERS = 1;
+
+/*
+ * Score: 5
+ * Description: Basic tests for LockShared and Unlock operations
+ * on small amount of rids.
+ */
+TEST(LockManagerTest, BasicTest) {
+  TEST_TIMEOUT_BEGIN
+  for (size_t i = 0; i < NUM_ITERS; i++) {
+    BasicTest1();
+    BasicTest2();
+    BasicTest3();
+  }
+  TEST_TIMEOUT_FAIL_END(1000 * 30)
 }
 
 }  // namespace bustub

@@ -267,7 +267,9 @@ class LockManager {
   //============================
   auto CheckUpgrade(const LockMode &hold, const LockMode &want) -> bool;
 
-  auto CheckCompatibility(const LockMode &hold, const LockMode &want) -> bool;
+  auto CheckOneCompatibility(const LockMode &hold, const LockMode &want) const -> bool;
+
+  auto CheckCompatibility(txn_id_t tid, LockMode lock_mode, std::list<LockRequest *> &request_queue) const -> bool;
 
   auto GrantLock(Transaction *txn, std::shared_ptr<LockRequestQueue> &lock_request_queue) -> bool;
 
