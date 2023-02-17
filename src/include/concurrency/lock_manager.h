@@ -269,7 +269,7 @@ class LockManager {
 
   auto CheckOneCompatibility(const LockMode &hold, const LockMode &want) const -> bool;
 
-  auto CheckCompatibility(txn_id_t tid, LockMode lock_mode, std::list<LockRequest *> &request_queue) const -> bool;
+  auto CheckCompatibility(Transaction *txn, LockMode lock_mode, std::list<LockRequest *> &target_lrq_queue) const -> bool; 
 
   auto GrantLock(Transaction *txn, std::shared_ptr<LockRequestQueue> &lock_request_queue) -> bool;
 

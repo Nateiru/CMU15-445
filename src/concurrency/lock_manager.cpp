@@ -152,83 +152,93 @@ auto LockManager::CheckOneCompatibility(const LockMode &hold, const LockMode &wa
   }
   return false;
 }
-auto LockManager::CheckCompatibility(txn_id_t tid, LockMode lock_mode,
-                                     std::list<LockRequest *> &request_queue) const -> bool {
-  // 和已经 grant 的兼容
-  for (const auto & request : request_queue) {
-    if (request->granted_) {
-      if (!CheckOneCompatibility(request->lock_mode_, lock_mode)) {
-        return false;
-      }
-    }
-  }
-  // 和自己前面 wait 的兼容
-  for (const auto & request : request_queue) {
-    if (request->txn_id_ == tid) {
-      return true;
-    }
-    if (!request->granted_) {
-      if (!CheckOneCompatibility(request->lock_mode_, lock_mode)) {
-        return false;
-      }
-    }
-  }
-  assert(0);
-  return false;
-}
 
-auto LockManager::GrantLock(Transaction *txn, std::shared_ptr<LockManager::LockRequestQueue> &lock_request_queue) -> bool {
-  // std::cout << "Want: " << txn->GetTransactionId() << std::endl;
-  // std::cout <<"Wait List: { ";
-  // for (auto request : lock_request_queue->request_queue_) {
-  //   std:: cout << request->txn_id_ << " ";
-  // }
-  // std::cout << "}\n" << std::endl;
-
-  // std::cout <<"Lock List: { ";
-  // for (auto request : lock_request_queue->request_queue_) {
-  //   std:: cout << (int)request->lock_mode_ << " ";
-  // }
-  // std::cout << "}\n" << std::endl;
-
-  // std::cout <<"[ ";
-  // for (auto request : lock_request_queue->request_queue_) {
-  //   if (request->granted_ == false) {
-  //     continue;
-  //   }
-  //   std:: cout << request->txn_id_ << " ";  
-  // }
-  // std::cout << "]\n" << std::endl;
-  // ===================================
-
+auto LockManager::CheckCompatibility(Transaction *txn, LockMode lock_mode,
+                                     std::list<LockRequest *> &target_lrq_queue) const -> bool {
   if (txn->GetState() == TransactionState::ABORTED) {
     return false;
   }
-  LockRequest *target_lock_request{nullptr};
-  for (auto request : lock_request_queue->request_queue_) {
-    if (txn->GetTransactionId() == request->txn_id_) {
-      target_lock_request = request;
-      break;
+
+  // IS IX S SIX S
+  bool exist_locks[5] = {false, false, false, false, false};
+  for (auto *lr : target_lrq_queue) {
+
+    if (lr->txn_id_ == txn->GetTransactionId()) {
+      return true;
     }
-  }
-  assert(target_lock_request != nullptr);
-  // std::cout << "Want Lock Type: " << (int) lock_request->lock_mode_ << std::endl; 
-  for (const auto & request : lock_request_queue->request_queue_) {
-    if (request->granted_) {
-      if (!CheckOneCompatibility(request->lock_mode_, target_lock_request->lock_mode_)) {
-        // std::cout << "Reason: " << (int) request->lock_mode_ << " != " << (int) lock_request->lock_mode_  << std::endl;
-        // std::cout << "Fail Grant: " << txn->GetTransactionId() << std::endl;
-        return false;
+    // A lock request can get locked only if all request before it all get locked.
+    // May have some lock requests before, but if this lock request is compatible with them, it can still get the lock.
+    if (!lr->granted_) {
+      // Check request before it can be given
+      if (exist_locks[0]) {
+        if (!CheckOneCompatibility(lr->lock_mode_, LockMode::INTENTION_SHARED)) {
+          return false;
+        }
+      }
+      if (exist_locks[1]) {
+        if (!CheckOneCompatibility(lr->lock_mode_, LockMode::INTENTION_EXCLUSIVE)) {
+          return false;
+        }
+      }
+      if (exist_locks[2]) {
+        if (!CheckOneCompatibility(lr->lock_mode_, LockMode::SHARED)) {
+          return false;
+        }
+      }
+      if (exist_locks[3]) {
+        if (!CheckOneCompatibility(lr->lock_mode_, LockMode::SHARED_INTENTION_EXCLUSIVE)) {
+          return false;
+        }
+      }
+      if (exist_locks[4]) {
+        if (!CheckOneCompatibility(lr->lock_mode_, LockMode::INTENTION_EXCLUSIVE)) {
+          return false;
+        }
       }
     }
+
+    switch (lr->lock_mode_) {
+      case LockMode::INTENTION_SHARED:
+        exist_locks[0] = true;
+        break;
+      case LockMode::INTENTION_EXCLUSIVE:
+        exist_locks[1] = true;
+        break;
+      case LockMode::SHARED:
+        exist_locks[2] = true;
+        break;
+      case LockMode::SHARED_INTENTION_EXCLUSIVE:
+        exist_locks[3] = true;
+        break;
+      case LockMode::EXCLUSIVE:
+        exist_locks[4] = true;
+        break;
+    }
+
+    if (!CheckOneCompatibility(lr->lock_mode_, lock_mode)) {
+      return false;
+    }
   }
-  // 说明全部兼容
+  BUSTUB_ASSERT(false, "cannot find target lock request in the queue");
+  return true;
+}
+auto LockManager::GrantLock(Transaction *txn, std::shared_ptr<LockManager::LockRequestQueue> &lock_request_queue) -> bool {
+  if (txn->GetState() == TransactionState::ABORTED) {
+    return false;
+  }
+  LockRequest *target_lock_request = *std::find_if(lock_request_queue->request_queue_.begin(), 
+                                      lock_request_queue->request_queue_.end(),
+                                      [&](const LockRequest *lr) {
+                                        return lr->txn_id_ == txn->GetTransactionId();
+                                      });
+  assert(target_lock_request != lock_request_queue->request_queue_->end());
+
   // 升级优先级最高
   if (lock_request_queue->upgrading_ != INVALID_TXN_ID) {
-    if (lock_request_queue->upgrading_ == txn->GetTransactionId()) {
+    if (lock_request_queue->upgrading_ == txn->GetTransactionId() && 
+        CheckCompatibility(txn, target_lock_request->lock_mode_, lock_request_queue->request_queue_)) {
       target_lock_request->granted_ = true;
       lock_request_queue->upgrading_ = INVALID_TXN_ID;
-      // std::cout << "Success Grade And Grant: " << txn->GetTransactionId() << std::endl;
       return true;
     }
     return false;
@@ -236,23 +246,10 @@ auto LockManager::GrantLock(Transaction *txn, std::shared_ptr<LockManager::LockR
   // FIFO
   // 当前请求是第一个 waiting 状态的请求 
   // 前面还存在其他 waiting 请求，则要判断当前请求是否前面的 waiting 请求兼容。
-  for (const auto & request : lock_request_queue->request_queue_) {
-    if (request->txn_id_ == txn->GetTransactionId()) {
-      assert(request->granted_ == false);
-      target_lock_request->granted_ = true;
-      // std::cout <<txn->GetTransactionId() << " Get Lock" <<std::endl;
-      return true;  
-    }
-    if (!request->granted_) {
-      if (!CheckOneCompatibility(request->lock_mode_, target_lock_request->lock_mode_)) {
-        return false;
-      }
-      if (!CheckCompatibility(request->txn_id_, request->lock_mode_, lock_request_queue->request_queue_)) {
-        return false;
-      }
-    }
+  if (CheckCompatibility(txn, target_lock_request->lock_mode_, lock_request_queue->request_queue_)) {
+    target_lock_request->granted_ = true;
+    return true;
   }
-  assert(0);
   return false;
 }
 
@@ -272,6 +269,7 @@ void LockManager::DeleteInQueue(Transaction *txn, std::shared_ptr<LockManager::L
   }
   lock_request_queue->cv_.notify_all();
 }
+
 auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool {
   /** 1. 检查 txn 的状态。*/
 
