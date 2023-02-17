@@ -279,6 +279,15 @@ class LockManager {
   
   void DeleteInQueue(Transaction *txn, std::shared_ptr<LockRequestQueue> &lock_request_queue);
 
+  auto GetLockSet(Transaction *txn, LockMode lock_mode) const
+    -> std::shared_ptr<std::unordered_set<table_oid_t>>;
+  
+  auto GetRowLockSet(Transaction *txn, LockMode lock_mode) const
+    -> std::shared_ptr<std::unordered_set<RID>>;
+  
+  auto GetTableLockMap(Transaction *txn, LockMode lock_mode) const
+    -> std::shared_ptr<std::unordered_map<table_oid_t, std::unordered_set<RID>>>;
+
   /*** Graph API ***/
 
   /**
