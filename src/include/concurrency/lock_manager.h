@@ -265,21 +265,10 @@ class LockManager {
   auto UnlockRow(Transaction *txn, const table_oid_t &oid, const RID &rid) -> bool;
 
   //============================
-  auto CheckUpgrade(const LockMode &hold, const LockMode &want) -> bool;
-
-  // auto CheckOneCompatibility(LockMode hold, LockMode want) const -> bool;
 
   auto CheckOneCompatibility(LockMode org_lock_mode, LockMode add_lock_mode) const -> bool;
 
   auto CheckCompatibility(Transaction *txn, LockMode lock_mode, std::list<LockRequest *> &target_lrq_queue) const -> bool; 
-
-  auto GrantLock(Transaction *txn, std::shared_ptr<LockRequestQueue> &lock_request_queue) -> bool;
-
-  void BookKeeping(bool insert, Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID rid = RID{});
-
-  auto CheckTableLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool;
-  
-  void DeleteInQueue(Transaction *txn, std::shared_ptr<LockRequestQueue> &lock_request_queue);
 
   auto GetLockSet(Transaction *txn, LockMode lock_mode) const
     -> std::shared_ptr<std::unordered_set<table_oid_t>>;
