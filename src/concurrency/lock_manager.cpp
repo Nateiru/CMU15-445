@@ -588,16 +588,11 @@ void LockManager::AddEdge(txn_id_t t1, txn_id_t t2) {
   if (waits_for_.find(t1) == waits_for_.end()) {
     waits_for_.emplace(t1, std::vector<txn_id_t>{t2});
   } else {
+    // unique edge
     if (std::find(waits_for_[t1].begin(), waits_for_[t1].end(), t2) == waits_for_[t1].end()) {
       // Keep order
       auto it = std::lower_bound(waits_for_[t1].begin(), waits_for_[t1].end(), t2);
-      // [](const txn_id_t &t1, const txn_id_t &t2) { return t1 > t2; });
-      //      auto it = waits_for_[t1].begin();
-      //      for (; it != waits_for_[t1].end(); ++it) {
-      //        if (*it < t2) {
-      //          break;
-      //        }
-      //      }
+      // *it > t2
       waits_for_[t1].insert(it, t2);
     }
   }
