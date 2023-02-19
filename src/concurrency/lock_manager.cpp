@@ -291,7 +291,8 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
     LockRequest *new_request;
     decltype(target_lrq->request_queue_.begin()) new_it;
     if (!is_update) {
-      new_request = target_lrq->request_queue_.emplace_back(new LockRequest(txn->GetTransactionId(), lock_mode, oid));
+      new_request = new LockRequest(txn->GetTransactionId(), lock_mode, oid); 
+      target_lrq->request_queue_.emplace_back(new_request);
       new_it = --target_lrq->request_queue_.end();
     } else {
       // find the first lock request that not get the lock
@@ -482,7 +483,8 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
     LockRequest *new_request;
     decltype(target_lrq->request_queue_.begin()) new_it;
     if (!is_update) {
-      new_request = target_lrq->request_queue_.emplace_back(new LockRequest(txn->GetTransactionId(), lock_mode, oid, rid));
+      new_request = new LockRequest(txn->GetTransactionId(), lock_mode, oid, rid);
+      target_lrq->request_queue_.emplace_back(new_request);
       new_it = --target_lrq->request_queue_.end();
     } else {
       // find the first lock request that not get the lock

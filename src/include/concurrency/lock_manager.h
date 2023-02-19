@@ -71,6 +71,11 @@ class LockManager {
     txn_id_t upgrading_ = INVALID_TXN_ID;
     /** coordination */
     std::mutex latch_;
+    ~LockRequestQueue() {
+      for (auto ptr : request_queue_) {
+        delete ptr;
+      }
+    }
   };
 
   /**
