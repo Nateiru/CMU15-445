@@ -18,93 +18,91 @@
 
 namespace bustub {
 
-void LockManager::BookKeeping(bool insert, Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID rid) {
+void LockManager::BookKeeping(bool insert, Transaction *txn, LockMode lock_mode, const table_oid_t &oid,
+                              const RID rid) {
   txn->LockTxn();
   // 说明对表加锁
   if (rid.GetPageId() == INVALID_PAGE_ID) {
     if (insert) {
       switch (lock_mode) {
-      case LockMode::SHARED:
-        txn->GetSharedTableLockSet()->insert(oid);
-        break;
-      case LockMode::EXCLUSIVE:
-        txn->GetExclusiveTableLockSet()->insert(oid);
-        break;
-      case LockMode::INTENTION_SHARED:
-        txn->GetIntentionSharedTableLockSet()->insert(oid);
-        break;
-      case LockMode::INTENTION_EXCLUSIVE:
-        txn->GetIntentionExclusiveTableLockSet()->insert(oid);
-        break;
-      case LockMode::SHARED_INTENTION_EXCLUSIVE:
-        txn->GetSharedIntentionExclusiveTableLockSet()->insert(oid);
-        break;
-      default:
-        assert(0);
-        break;
+        case LockMode::SHARED:
+          txn->GetSharedTableLockSet()->insert(oid);
+          break;
+        case LockMode::EXCLUSIVE:
+          txn->GetExclusiveTableLockSet()->insert(oid);
+          break;
+        case LockMode::INTENTION_SHARED:
+          txn->GetIntentionSharedTableLockSet()->insert(oid);
+          break;
+        case LockMode::INTENTION_EXCLUSIVE:
+          txn->GetIntentionExclusiveTableLockSet()->insert(oid);
+          break;
+        case LockMode::SHARED_INTENTION_EXCLUSIVE:
+          txn->GetSharedIntentionExclusiveTableLockSet()->insert(oid);
+          break;
+        default:
+          assert(0);
+          break;
       }
-    }
-    else {
+    } else {
       switch (lock_mode) {
-      case LockMode::SHARED:
-        txn->GetSharedTableLockSet()->erase(oid);
-        break;
-      case LockMode::EXCLUSIVE:
-        txn->GetExclusiveTableLockSet()->erase(oid);
-        break;
-      case LockMode::INTENTION_SHARED:
-        txn->GetIntentionSharedTableLockSet()->erase(oid);
-        break;
-      case LockMode::INTENTION_EXCLUSIVE:
-        txn->GetIntentionExclusiveTableLockSet()->erase(oid);
-        break;
-      case LockMode::SHARED_INTENTION_EXCLUSIVE:
-        txn->GetSharedIntentionExclusiveTableLockSet()->erase(oid);
-        break;
-      default:
-        assert(0);
-        break;
+        case LockMode::SHARED:
+          txn->GetSharedTableLockSet()->erase(oid);
+          break;
+        case LockMode::EXCLUSIVE:
+          txn->GetExclusiveTableLockSet()->erase(oid);
+          break;
+        case LockMode::INTENTION_SHARED:
+          txn->GetIntentionSharedTableLockSet()->erase(oid);
+          break;
+        case LockMode::INTENTION_EXCLUSIVE:
+          txn->GetIntentionExclusiveTableLockSet()->erase(oid);
+          break;
+        case LockMode::SHARED_INTENTION_EXCLUSIVE:
+          txn->GetSharedIntentionExclusiveTableLockSet()->erase(oid);
+          break;
+        default:
+          assert(0);
+          break;
       }
     }
-  }
-  else { // 对行加锁
+  } else {  // 对行加锁
     assert(lock_mode == LockMode::SHARED || lock_mode == LockMode::EXCLUSIVE);
     if (insert) {
       switch (lock_mode) {
-      case LockMode::SHARED:
-        txn->GetSharedLockSet()->insert(rid);
-        if (!txn->GetSharedRowLockSet()->count(oid)) {
-          txn->GetSharedRowLockSet()->emplace(oid, std::unordered_set<RID>());
-        }
-        txn->GetSharedRowLockSet()->at(oid).insert(rid);
-        break;
-      case LockMode::EXCLUSIVE:
-        txn->GetExclusiveLockSet()->insert(rid);
-        if (!txn->GetExclusiveRowLockSet()->count(oid)) {
-          txn->GetExclusiveRowLockSet()->emplace(oid, std::unordered_set<RID>());
-        }
-        txn->GetExclusiveRowLockSet()->at(oid).insert(rid);
-        break;
-      default:
-        assert(0);
-        break;
+        case LockMode::SHARED:
+          txn->GetSharedLockSet()->insert(rid);
+          if (!txn->GetSharedRowLockSet()->count(oid)) {
+            txn->GetSharedRowLockSet()->emplace(oid, std::unordered_set<RID>());
+          }
+          txn->GetSharedRowLockSet()->at(oid).insert(rid);
+          break;
+        case LockMode::EXCLUSIVE:
+          txn->GetExclusiveLockSet()->insert(rid);
+          if (!txn->GetExclusiveRowLockSet()->count(oid)) {
+            txn->GetExclusiveRowLockSet()->emplace(oid, std::unordered_set<RID>());
+          }
+          txn->GetExclusiveRowLockSet()->at(oid).insert(rid);
+          break;
+        default:
+          assert(0);
+          break;
       }
-    }
-    else {
+    } else {
       switch (lock_mode) {
-      case LockMode::SHARED:
-        txn->GetSharedLockSet()->erase(rid);
-        assert(txn->GetSharedRowLockSet()->count(oid) != 0U);
-        txn->GetSharedRowLockSet()->at(oid).erase(rid);
-        break;
-      case LockMode::EXCLUSIVE:
-        txn->GetExclusiveLockSet()->erase(rid);
-        assert(txn->GetExclusiveLockSet()->count(rid) != 0U);
-        txn->GetExclusiveRowLockSet()->at(oid).erase(rid);
-        break;
-      default:
-        assert(0);
-        break;
+        case LockMode::SHARED:
+          txn->GetSharedLockSet()->erase(rid);
+          assert(txn->GetSharedRowLockSet()->count(oid) != 0U);
+          txn->GetSharedRowLockSet()->at(oid).erase(rid);
+          break;
+        case LockMode::EXCLUSIVE:
+          txn->GetExclusiveLockSet()->erase(rid);
+          assert(txn->GetExclusiveLockSet()->count(rid) != 0U);
+          txn->GetExclusiveRowLockSet()->at(oid).erase(rid);
+          break;
+        default:
+          assert(0);
+          break;
       }
     }
   }
@@ -113,18 +111,14 @@ void LockManager::BookKeeping(bool insert, Transaction *txn, LockMode lock_mode,
 
 auto LockManager::CheckUpgrade(const LockMode &hold, const LockMode &want) -> bool {
   if (hold == LockMode::INTENTION_SHARED) {
-    return want == LockMode::SHARED              || \
-           want == LockMode::EXCLUSIVE           || \
-           want == LockMode::INTENTION_EXCLUSIVE || \
+    return want == LockMode::SHARED || want == LockMode::EXCLUSIVE || want == LockMode::INTENTION_EXCLUSIVE ||
            want == LockMode::SHARED_INTENTION_EXCLUSIVE;
   }
   if (hold == LockMode::SHARED) {
-    return want == LockMode::EXCLUSIVE           || \
-           want == LockMode::SHARED_INTENTION_EXCLUSIVE; 
+    return want == LockMode::EXCLUSIVE || want == LockMode::SHARED_INTENTION_EXCLUSIVE;
   }
   if (hold == LockMode::INTENTION_EXCLUSIVE) {
-    return want == LockMode::EXCLUSIVE           || \
-           want == LockMode::SHARED_INTENTION_EXCLUSIVE;
+    return want == LockMode::EXCLUSIVE || want == LockMode::SHARED_INTENTION_EXCLUSIVE;
   }
   if (hold == LockMode::SHARED_INTENTION_EXCLUSIVE) {
     return want == LockMode::EXCLUSIVE;
@@ -134,18 +128,14 @@ auto LockManager::CheckUpgrade(const LockMode &hold, const LockMode &want) -> bo
 
 auto LockManager::CheckOneCompatibility(LockMode hold, LockMode want) const -> bool {
   if (hold == LockMode::INTENTION_SHARED) {
-    return want == LockMode::INTENTION_SHARED    || \
-           want == LockMode::INTENTION_EXCLUSIVE || \
-           want == LockMode::SHARED              || \
+    return want == LockMode::INTENTION_SHARED || want == LockMode::INTENTION_EXCLUSIVE || want == LockMode::SHARED ||
            want == LockMode::SHARED_INTENTION_EXCLUSIVE;
   }
   if (hold == LockMode::INTENTION_EXCLUSIVE) {
-    return want == LockMode::INTENTION_SHARED    || \
-           want == LockMode::INTENTION_EXCLUSIVE; 
+    return want == LockMode::INTENTION_SHARED || want == LockMode::INTENTION_EXCLUSIVE;
   }
   if (hold == LockMode::SHARED) {
-    return want == LockMode::INTENTION_SHARED    || \
-           want == LockMode::SHARED;
+    return want == LockMode::INTENTION_SHARED || want == LockMode::SHARED;
   }
   if (hold == LockMode::SHARED_INTENTION_EXCLUSIVE) {
     return want == LockMode::INTENTION_SHARED;
@@ -153,20 +143,18 @@ auto LockManager::CheckOneCompatibility(LockMode hold, LockMode want) const -> b
   return false;
 }
 
-
-auto LockManager::GrantLock(Transaction *txn, std::shared_ptr<LockManager::LockRequestQueue> &lock_request_queue) -> bool {
+auto LockManager::GrantLock(Transaction *txn, std::shared_ptr<LockManager::LockRequestQueue> &lock_request_queue)
+    -> bool {
   if (txn->GetState() == TransactionState::ABORTED) {
     return false;
   }
   /** 1. 找到目前将要候等事务*/
-  LockRequest *target_lock_request = *std::find_if(lock_request_queue->request_queue_.begin(), 
-                                      lock_request_queue->request_queue_.end(),
-                                      [&](const LockRequest *lr) {
-                                        return lr->txn_id_ == txn->GetTransactionId();
-                                      });
+  LockRequest *target_lock_request =
+      *std::find_if(lock_request_queue->request_queue_.begin(), lock_request_queue->request_queue_.end(),
+                    [&](const LockRequest *lr) { return lr->txn_id_ == txn->GetTransactionId(); });
   /** 2. 升级的优先级最高 率先升级*/
   if (lock_request_queue->upgrading_ != INVALID_TXN_ID) {
-    if (lock_request_queue->upgrading_ == txn->GetTransactionId() && 
+    if (lock_request_queue->upgrading_ == txn->GetTransactionId() &&
         CheckCompatibility(txn, target_lock_request->lock_mode_, lock_request_queue->request_queue_)) {
       target_lock_request->granted_ = true;
       lock_request_queue->upgrading_ = INVALID_TXN_ID;
@@ -185,11 +173,8 @@ auto LockManager::GrantLock(Transaction *txn, std::shared_ptr<LockManager::LockR
 
 void LockManager::DeleteInQueue(Transaction *txn, std::shared_ptr<LockManager::LockRequestQueue> &lock_request_queue) {
   assert(txn->GetState() == TransactionState::ABORTED);
-  auto remove_it = std::find_if(lock_request_queue->request_queue_.begin(), 
-                                      lock_request_queue->request_queue_.end(),
-                                      [&](const LockRequest *lr) {
-                                        return lr->txn_id_ == txn->GetTransactionId();
-                                      });
+  auto remove_it = std::find_if(lock_request_queue->request_queue_.begin(), lock_request_queue->request_queue_.end(),
+                                [&](const LockRequest *lr) { return lr->txn_id_ == txn->GetTransactionId(); });
   auto remove_request = *remove_it;
   lock_request_queue->request_queue_.erase(remove_it);
   delete remove_request;
@@ -201,16 +186,13 @@ void LockManager::DeleteInQueue(Transaction *txn, std::shared_ptr<LockManager::L
 
 auto LockManager::CheckTableLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool {
   if (lock_mode == LockMode::SHARED) {
-    return txn->IsTableExclusiveLocked(oid) || 
-           txn->IsTableIntentionExclusiveLocked(oid) ||
-           txn->IsTableIntentionSharedLocked(oid) ||
-           txn->IsTableSharedIntentionExclusiveLocked(oid) ||
+    return txn->IsTableExclusiveLocked(oid) || txn->IsTableIntentionExclusiveLocked(oid) ||
+           txn->IsTableIntentionSharedLocked(oid) || txn->IsTableSharedIntentionExclusiveLocked(oid) ||
            txn->IsTableSharedLocked(oid);
   }
   assert(lock_mode == LockMode::EXCLUSIVE);
-  return txn->IsTableExclusiveLocked(oid) || 
-         txn->IsTableIntentionExclusiveLocked(oid) ||
-         txn->IsTableSharedIntentionExclusiveLocked(oid); 
+  return txn->IsTableExclusiveLocked(oid) || txn->IsTableIntentionExclusiveLocked(oid) ||
+         txn->IsTableSharedIntentionExclusiveLocked(oid);
 }
 
 auto LockManager::GetLockSet(Transaction *txn, LockMode lock_mode) const
@@ -278,7 +260,6 @@ auto LockManager::CheckCompatibility(Transaction *txn, LockMode lock_mode,
   // IS IX S SIX S
   bool exist_locks[5] = {false, false, false, false, false};
   for (auto *lr : target_lrq_queue) {
-
     if (lr->txn_id_ == txn->GetTransactionId()) {
       return true;
     }
@@ -410,7 +391,7 @@ auto LockManager::CheckCompatibility(Transaction *txn, LockMode lock_mode,
 //       // 3. 插入新的位置
 //       auto insert_pos = std::find_if(request_queue.begin(), request_queue.end(),
 //                                      [&](const LockRequest *lr) { return !lr->granted_; });
-//       request_queue.insert(insert_pos, new LockRequest(txn->GetTransactionId(), lock_mode, oid)); 
+//       request_queue.insert(insert_pos, new LockRequest(txn->GetTransactionId(), lock_mode, oid));
 //       // 4. 等待直到新锁被授予。
 //       while ((txn->GetState() != TransactionState::ABORTED) && !GrantLock(txn, lock_request_queue)) {
 //         lock_request_queue->cv_.wait(lock);
@@ -424,9 +405,9 @@ auto LockManager::CheckCompatibility(Transaction *txn, LockMode lock_mode,
 //       return true;
 //     }
 //   }
-//   // std::cout << "Lock Table" <<std::endl; 
+//   // std::cout << "Lock Table" <<std::endl;
 //   /** 4. 将锁请求加入请求队列（此时无锁升级）。*/
-  
+
 //   lock_request_queue->request_queue_.emplace_back(new LockRequest(txn->GetTransactionId(), lock_mode, oid));
 //   assert(lock_request_queue->request_queue_.back()->lock_mode_ == lock_mode);
 //   /** 5. 尝试获取锁。*/
@@ -525,7 +506,6 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
     }
   }
 
-
   table_lock_map_latch_.lock();
   if (table_lock_map_.find(oid) == table_lock_map_.end()) {
     table_lock_map_.emplace(oid, std::make_shared<LockRequestQueue>());
@@ -568,8 +548,9 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
       new_it = target_lrq_queue.insert(insert_pos, new_request);
     }
 
-    target_lrq->cv_.wait(lk, [&]() { return (txn->GetState() == TransactionState::ABORTED) || 
-                                             CheckCompatibility(txn, lock_mode, target_lrq_queue); });
+    target_lrq->cv_.wait(lk, [&]() {
+      return (txn->GetState() == TransactionState::ABORTED) || CheckCompatibility(txn, lock_mode, target_lrq_queue);
+    });
     if (is_update) {
       target_lrq->upgrading_ = INVALID_PAGE_ID;
     }
@@ -689,9 +670,8 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
 //     }
 //   }
 //   return true;
-    
-// }
 
+// }
 
 auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool {
   if (txn->GetState() == TransactionState::ABORTED) {
@@ -928,5 +908,4 @@ void LockManager::RunCycleDetection() {
   }
 }
 
-}  // namespace bustu
-
+}  // namespace bustub

@@ -68,7 +68,7 @@ void CheckTxnRowLockSize(Transaction *txn, size_t shared_size, size_t exclusive_
 }
 
 // NOLINTNEXTLINE
-TEST_F(TransactionTest, DISABLED_SimpleInsertRollbackTest) {
+TEST_F(TransactionTest, SimpleInsertRollbackTest) {
   // txn1: INSERT INTO empty_table2 VALUES (200, 20), (201, 21), (202, 22)
   // txn1: abort
   // txn2: SELECT * FROM empty_table2;
@@ -91,7 +91,7 @@ TEST_F(TransactionTest, DISABLED_SimpleInsertRollbackTest) {
 }
 
 // NOLINTNEXTLINE
-TEST_F(TransactionTest, DISABLED_DirtyReadsTest) {
+TEST_F(TransactionTest, DirtyReadsTest) {
   bustub_->GenerateTestTable();
 
   // txn1: INSERT INTO empty_table2 VALUES (200, 20), (201, 21), (202, 22)
@@ -117,6 +117,104 @@ TEST_F(TransactionTest, DISABLED_DirtyReadsTest) {
 
   bustub_->txn_manager_->Abort(txn1);
   delete txn1;
+}
+TEST(LockManagerTest, RepeatableRead) {
+  const int num = 5;
+
+  LockManager lock_mgr{};
+  TransactionManager txn_mgr{&lock_mgr};
+  // table_oid_t oid = 0;
+
+  std::stringstream result;
+  auto bustub = std::make_unique<bustub::BustubInstance>();
+  auto writer = bustub::SimpleStreamWriter(result, true, " ");
+
+  auto schema = "CREATE TABLE nft(id int, terrier int);";
+  std::cerr << "x: create schema" << std::endl;
+  bustub->ExecuteSql(schema, writer);
+  fmt::print("{}", result.str());
+
+  std::cerr << "x: initialize data" << std::endl;
+  std::string query = "INSERT INTO nft VALUES ";
+  for (size_t i = 0; i < num; i++) {
+    query += fmt::format("({}, {})", i, 0);
+    if (i != num - 1) {
+      query += ", ";
+    } else {
+      query += ";";
+    }
+  }
+
+  {
+    std::stringstream ss;
+    auto writer = bustub::SimpleStreamWriter(ss, true);
+    auto txn = bustub->txn_manager_->Begin(nullptr, bustub::IsolationLevel::REPEATABLE_READ);
+    bustub->ExecuteSqlTxn(query, writer, txn);
+    CheckGrowing(txn);
+    bustub->txn_manager_->Commit(txn);
+    delete txn;
+    if (ss.str() != fmt::format("{}\t\n", num)) {
+      fmt::print("unexpected result \"{}\" when insert\n", ss.str());
+      exit(1);
+    }
+  }
+
+  {
+    std::string query = "SELECT * FROM nft;";
+    std::stringstream ss;
+    auto writer = bustub::SimpleStreamWriter(ss, true);
+    auto txn = bustub->txn_manager_->Begin(nullptr, bustub::IsolationLevel::REPEATABLE_READ);
+    bustub->ExecuteSqlTxn(query, writer, txn);
+    CheckGrowing(txn);
+    bustub->txn_manager_->Commit(txn);
+    delete txn;
+    fmt::print("--- YOUR RESULT ---\n{}\n", ss.str());
+  }
+
+  std::thread t0([&]() {
+    std::string query = "select * from nft where id = 0";
+    std::stringstream ss;
+    auto writer = bustub::SimpleStreamWriter(ss, true);
+    auto txn = bustub->txn_manager_->Begin(nullptr, bustub::IsolationLevel::REPEATABLE_READ);
+    fmt::print("txn thread t0 {}\n", query);
+    bustub->ExecuteSqlTxn(query, writer, txn);
+    fmt::print("thread t0 result\n{}\n", ss.str());
+    std::string s1 = ss.str();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ss.str("");
+
+    fmt::print("txn thread t0 {}\n", query);
+    bustub->ExecuteSqlTxn(query, writer, txn);
+    fmt::print("txn thread t0 result\n{}\n", ss.str());
+    std::string s2 = ss.str();
+
+    EXPECT_EQ(s1, s2);
+    CheckGrowing(txn);
+    bustub->txn_manager_->Commit(txn);
+    fmt::print("txn threadt0 commit\n");
+    delete txn;
+  });
+
+  // std::thread t1([&]() {
+  //   std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  //   std::string query = "update nft set terrier = 1 where id = 0";
+  //   std::stringstream ss;
+  //   auto writer = bustub::SimpleStreamWriter(ss, true);
+  //   auto txn = bustub->txn_manager_->Begin(nullptr, bustub::IsolationLevel::REPEATABLE_READ);
+
+  //   fmt::print("txn thread t1 {}\n", query);
+  //   bustub->ExecuteSqlTxn(query, writer, txn);
+  //   fmt::print("txn thread t1 result\n{}\n", ss.str());
+
+  //   CheckGrowing(txn);
+  //   bustub->txn_manager_->Commit(txn);
+  //   fmt::print("txn thread t1 commit\n");
+  //   delete txn;
+  // });
+
+  t0.join();
+  // t1.join();
 }
 
 }  // namespace bustub

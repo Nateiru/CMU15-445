@@ -1,11 +1,5 @@
 
 
-
-
-
-
-
-
 auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool {
   if (txn->GetState() == TransactionState::ABORTED) {
     return false;

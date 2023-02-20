@@ -777,7 +777,7 @@ void BasicTest2() {
     txn_mgr.Commit(txns[txn_id]);
     CheckCommitted(txns[txn_id]);
   };
-  
+
   std::vector<std::thread> threads;
   threads.reserve(num_rids);
 
@@ -808,7 +808,7 @@ void BasicTest3() {
     EXPECT_EQ(i, txns[i]->GetTransactionId());
   }
   // test
-  
+
   auto task = [&](int txn_id) {
     for (const auto &oid : oids) {
       try {
@@ -818,7 +818,6 @@ void BasicTest3() {
       }
     }
   };
-  
 
   std::vector<std::thread> threads;
   threads.reserve(num_rids);
